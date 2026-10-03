@@ -1,0 +1,10 @@
+{
+  "name": "backup-exclusion",
+  "version": "1.0.0",
+  "description": "Исключение базы данных приложения из облачного бэкапа iOS/Android",
+  "main": "index.ts",
+  "license": "UNLICENSED",
+  "author": "Clean Count",
+  "homepage": "https://example.invalid/clean-count",
+  "private": true
+}

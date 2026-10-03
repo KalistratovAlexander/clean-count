@@ -1,0 +1,163 @@
+import { Redirect, router } from 'expo-router';
+import { useCallback, useMemo, useRef, useState } from 'react';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import PagerView from 'react-native-pager-view';
+import { useSharedValue } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { IconButton, PillButton } from '@/components/buttons';
+import { CounterCard, RelapsesCard, StatCards } from '@/components/HabitCards';
+import { CalendarIcon, SettingsIcon } from '@/components/icons';
+import { MilestoneOverlay } from '@/components/MilestoneOverlay';
+import { useRelapseFlow } from '@/components/relapse/useRelapseFlow';
+import { SegmentedControl } from '@/components/SegmentedControl';
+import { pendingMilestone } from '@/domain/milestones';
+import { computeHabitStats } from '@/domain/stats';
+import type { Habit } from '@/domain/types';
+import { useClock } from '@/hooks/clock';
+import { useEnabledHabits } from '@/hooks/useEnabledHabits';
+import { t } from '@/i18n';
+import { useAppStore } from '@/store/appStore';
+import { colors, fonts, MAX_FONT_SCALE_TEXT, spacing } from '@/theme';
+
+const BUTTON_HEIGHT = 60;
+
+export default function MainScreen() {
+  const insets = useSafeAreaInsets();
+  const habits = useEnabledHabits();
+  const lastScreen = useAppStore((s) => s.settings.lastScreen);
+  const setLastScreen = useAppStore((s) => s.setLastScreen);
+  const markMilestonesShown = useAppStore((s) => s.markMilestonesShown);
+  const relapses = useAppStore((s) => s.relapses);
+  const clock = useClock();
+
+  const initialIndex = Math.max(0, habits.findIndex((h) => h.id === lastScreen));
+  const [index, setIndex] = useState(initialIndex);
+  const position = useSharedValue(initialIndex);
+  const pager = useRef<PagerView>(null);
+
+  // Набор привычек поменялся в настройках — пейджер пересоздаётся, индекс берём заново.
+  const habitsKey = habits.map((h) => h.id).join();
+  const [prevKey, setPrevKey] = useState(habitsKey);
+  if (prevKey !== habitsKey) {
+    setPrevKey(habitsKey);
+    setIndex(initialIndex);
+    position.set(initialIndex);
+  }
+
+  const bottomInset = Math.max(insets.bottom, 16) + 8;
+  const flow = useRelapseFlow(bottomInset + BUTTON_HEIGHT + 12);
+
+  const current: Habit | undefined = habits[Math.min(index, habits.length - 1)];
+  const stats = useMemo(
+    () => habits.map((h) => computeHabitStats(h, relapses, clock.now, clock.tz)),
+    [habits, relapses, clock.now, clock.tz],
+  );
+  const currentStats = current ? stats[habits.indexOf(current)] : undefined;
+
+  const milestone =
+    current && currentStats && !flow.sheetVisible ? pendingMilestone(currentStats.streak.days, current.milestonesShown) : null;
+
+  const select = useCallback(
+    (i: number) => {
+      setIndex(i);
+      const habit = habits[i];
+      if (habit) setLastScreen(habit.id);
+    },
+    [habits, setLastScreen],
+  );
+
+  if (!current || !currentStats) return <Redirect href="/onboarding" />;
+
+  const pages = habits.map((habit, i) => (
+    <ScrollView
+      key={habit.id}
+      contentContainerStyle={[styles.page, { paddingBottom: BUTTON_HEIGHT + bottomInset + 24 }]}
+      showsVerticalScrollIndicator={false}
+    >
+      <CounterCard habitId={habit.id} stats={stats[i]!} today={clock.today} tz={clock.tz} />
+      <StatCards habitId={habit.id} stats={stats[i]!} today={clock.today} />
+      <RelapsesCard habitId={habit.id} stats={stats[i]!} />
+    </ScrollView>
+  ));
+
+  return (
+    <View style={styles.root}>
+      <View style={[styles.topBar, { paddingTop: insets.top + 12 }]}>
+        <View style={styles.topLeft}>
+          {habits.length > 1 ? (
+            <SegmentedControl
+              segments={habits.map((h) => ({ key: h.id, label: t.habit[h.id] }))}
+              position={position}
+              selectedIndex={index}
+              onSelect={(i) => pager.current?.setPage(i)}
+            />
+          ) : (
+            <Text style={styles.appTitle} accessibilityRole="header" maxFontSizeMultiplier={MAX_FONT_SCALE_TEXT}>
+              {t.appName}
+            </Text>
+          )}
+        </View>
+        <IconButton label={t.main.calendar} onPress={() => router.push({ pathname: '/calendar', params: { filter: current.id } })}>
+          <CalendarIcon color={colors.textPrimary} />
+        </IconButton>
+        <IconButton label={t.main.settings} onPress={() => router.push('/settings')}>
+          <SettingsIcon color={colors.textPrimary} />
+        </IconButton>
+      </View>
+
+      {habits.length > 1 ? (
+        <PagerView
+          key={habitsKey}
+          ref={pager}
+          style={styles.pager}
+          initialPage={initialIndex}
+          onPageScroll={(e) => {
+            position.set(e.nativeEvent.position + e.nativeEvent.offset);
+          }}
+          onPageSelected={(e) => select(e.nativeEvent.position)}
+        >
+          {pages}
+        </PagerView>
+      ) : (
+        <View style={styles.pager}>{pages[0]}</View>
+      )}
+
+      <View style={[styles.bottom, { paddingBottom: bottomInset }]} pointerEvents="box-none">
+        <PillButton label={t.main.relapseButton} onPress={() => flow.open(current.id)} />
+      </View>
+
+      {flow.elements}
+
+      <MilestoneOverlay
+        habitId={milestone != null ? current.id : null}
+        milestone={milestone}
+        onClose={() => markMilestonesShown(current.id, currentStats.streak.days).catch(console.error)}
+      />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: colors.background },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: spacing.screenX,
+    paddingBottom: 6,
+  },
+  topLeft: { flex: 1, marginRight: 4 },
+  appTitle: { fontFamily: fonts.display700, fontSize: 20, color: colors.textPrimary },
+  pager: { flex: 1 },
+  page: { paddingHorizontal: spacing.screenX, paddingTop: 12, gap: spacing.gap },
+  bottom: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingHorizontal: spacing.screenX,
+    paddingTop: 12,
+    backgroundColor: colors.background,
+  },
+});
