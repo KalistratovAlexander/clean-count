@@ -5,11 +5,16 @@ import { AppState } from 'react-native';
 import { localDateAt } from '@/domain/localDate';
 import type { LocalDate } from '@/domain/types';
 
+/** То, от чего зависят экраны: календарная дата и пояс. Момент времени здесь не хранится, он быстро устаревает. */
 export interface Clock {
-  now: Date;
   /** Текущий часовой пояс устройства, IANA: "Europe/Moscow". */
   tz: string;
   today: LocalDate;
+}
+
+/** Свежие часы на момент действия пользователя, с точным моментом времени. */
+export interface Now extends Clock {
+  now: Date;
 }
 
 function readTimeZone(): string {
@@ -20,28 +25,36 @@ function readTimeZone(): string {
   }
 }
 
-function readClock(): Clock {
+function readClock(): Now {
   const now = new Date();
   const tz = readTimeZone();
   return { now, tz, today: localDateAt(now, tz) };
 }
 
+const toClock = ({ tz, today }: Now): Clock => ({ tz, today });
+
 const ClockContext = createContext<Clock | null>(null);
 
 /**
- * Единые часы приложения: обновляются на границе каждой минуты и при возврате
- * в приложение. Часовой пояс перечитывается каждый раз, поэтому смена пояса
- * и переход на летнее время подхватываются без перезапуска.
+ * Единые часы приложения: проверяются на границе каждой минуты и при возврате
+ * в приложение, но подписчики обновляются только когда меняется календарная
+ * дата или часовой пояс — экраны зависят лишь от них. Пояс перечитывается каждый
+ * раз, поэтому его смена подхватывается без перезапуска.
  */
 export function ClockProvider({ children }: { children: ReactNode }) {
-  const [clock, setClock] = useState(readClock);
+  const [clock, setClock] = useState<Clock>(() => toClock(readClock()));
 
   useEffect(() => {
+    const refresh = () =>
+      setClock((prev) => {
+        const next = readClock();
+        return next.today === prev.today && next.tz === prev.tz ? prev : toClock(next);
+      });
     let timer: ReturnType<typeof setTimeout>;
     const schedule = () => {
       const msToNextMinute = 60_000 - (Date.now() % 60_000) + 50;
       timer = setTimeout(() => {
-        setClock(readClock());
+        refresh();
         schedule();
       }, msToNextMinute);
     };
@@ -50,7 +63,7 @@ export function ClockProvider({ children }: { children: ReactNode }) {
     const sub = AppState.addEventListener('change', (state) => {
       if (state !== 'active') return;
       clearTimeout(timer);
-      setClock(readClock());
+      refresh();
       schedule();
     });
 
@@ -70,7 +83,7 @@ export function useClock(): Clock {
 }
 
 /** Свежие значения на момент действия пользователя (а не на последний тик). */
-export function readNow(): Clock {
+export function readNow(): Now {
   return readClock();
 }
 

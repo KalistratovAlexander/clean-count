@@ -6,8 +6,8 @@ import { useSharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { IconButton, PillButton } from '@/components/buttons';
-import { CounterCard, RelapsesCard, StatCards } from '@/components/HabitCards';
-import { CalendarIcon, SettingsIcon } from '@/components/icons';
+import { CounterCard, RelapsesCard, StatsCard } from '@/components/HabitCards';
+import { CalendarIcon, SettingsIcon, TrophyIcon } from '@/components/icons';
 import { MilestoneOverlay } from '@/components/MilestoneOverlay';
 import { useRelapseFlow } from '@/components/relapse/useRelapseFlow';
 import { SegmentedControl } from '@/components/SegmentedControl';
@@ -27,7 +27,7 @@ export default function MainScreen() {
   const habits = useEnabledHabits();
   const lastScreen = useAppStore((s) => s.settings.lastScreen);
   const setLastScreen = useAppStore((s) => s.setLastScreen);
-  const markMilestonesShown = useAppStore((s) => s.markMilestonesShown);
+  const markCelebrated = useAppStore((s) => s.markCelebrated);
   const relapses = useAppStore((s) => s.relapses);
   const clock = useClock();
 
@@ -49,14 +49,12 @@ export default function MainScreen() {
   const flow = useRelapseFlow(bottomInset + BUTTON_HEIGHT + 12);
 
   const current: Habit | undefined = habits[Math.min(index, habits.length - 1)];
-  const stats = useMemo(
-    () => habits.map((h) => computeHabitStats(h, relapses, clock.now, clock.tz)),
-    [habits, relapses, clock.now, clock.tz],
-  );
+  // Показатели зависят только от календарной даты, поэтому пересчитываются раз в сутки и при изменении записей.
+  const stats = useMemo(() => habits.map((h) => computeHabitStats(h, relapses, clock.today)), [habits, relapses, clock.today]);
   const currentStats = current ? stats[habits.indexOf(current)] : undefined;
 
   const milestone =
-    current && currentStats && !flow.sheetVisible ? pendingMilestone(currentStats.streak.days, current.milestonesShown) : null;
+    current && currentStats && !flow.sheetVisible ? pendingMilestone(currentStats.daysSinceRelapse, currentStats.streakStart, current) : null;
 
   const select = useCallback(
     (i: number) => {
@@ -69,14 +67,16 @@ export default function MainScreen() {
 
   if (!current || !currentStats) return <Redirect href="/onboarding" />;
 
+  const openAchievements = (id: Habit['id']) => router.push({ pathname: '/achievements', params: { habit: id } });
+
   const pages = habits.map((habit, i) => (
     <ScrollView
       key={habit.id}
       contentContainerStyle={[styles.page, { paddingBottom: BUTTON_HEIGHT + bottomInset + 24 }]}
       showsVerticalScrollIndicator={false}
     >
-      <CounterCard habitId={habit.id} stats={stats[i]!} today={clock.today} tz={clock.tz} />
-      <StatCards habitId={habit.id} stats={stats[i]!} today={clock.today} />
+      <CounterCard habitId={habit.id} stats={stats[i]!} today={clock.today} />
+      <StatsCard habitId={habit.id} stats={stats[i]!} onGoalPress={() => openAchievements(habit.id)} />
       <RelapsesCard habitId={habit.id} stats={stats[i]!} />
     </ScrollView>
   ));
@@ -98,6 +98,9 @@ export default function MainScreen() {
             </Text>
           )}
         </View>
+        <IconButton label={t.main.achievements} onPress={() => openAchievements(current.id)}>
+          <TrophyIcon color={colors.textPrimary} />
+        </IconButton>
         <IconButton label={t.main.calendar} onPress={() => router.push({ pathname: '/calendar', params: { filter: current.id } })}>
           <CalendarIcon color={colors.textPrimary} />
         </IconButton>
@@ -132,7 +135,9 @@ export default function MainScreen() {
       <MilestoneOverlay
         habitId={milestone != null ? current.id : null}
         milestone={milestone}
-        onClose={() => markMilestonesShown(current.id, currentStats.streak.days).catch(console.error)}
+        onClose={() => {
+          if (milestone != null) markCelebrated(current.id, currentStats.streakStart, milestone).catch(console.error);
+        }}
       />
     </View>
   );
@@ -150,7 +155,8 @@ const styles = StyleSheet.create({
   topLeft: { flex: 1, marginRight: 4 },
   appTitle: { fontFamily: fonts.display700, fontSize: 20, color: colors.textPrimary },
   pager: { flex: 1 },
-  page: { paddingHorizontal: spacing.screenX, paddingTop: 12, gap: spacing.gap },
+  // flexGrow: карточка срывов прижимается к низу страницы (marginTop: 'auto'), пока контент короче экрана.
+  page: { flexGrow: 1, paddingHorizontal: spacing.screenX, paddingTop: 12, gap: spacing.gap },
   bottom: {
     position: 'absolute',
     left: 0,

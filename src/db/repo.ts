@@ -1,4 +1,4 @@
-import { HABIT_IDS, type Habit, type HabitId, type Relapse, type RelapseKind, type Settings } from '@/domain/types';
+import { emptyHabit, HABIT_IDS, type Habit, type HabitId, type Relapse, type RelapseKind, type Settings } from '@/domain/types';
 
 import { getDatabase } from './database';
 
@@ -7,6 +7,8 @@ interface HabitRow {
   enabled: number;
   quit_at: string | null;
   milestones_shown: string;
+  celebrated_since: string | null;
+  celebrated_up_to: number;
 }
 
 interface RelapseRow {
@@ -39,7 +41,9 @@ const toHabit = (row: HabitRow): Habit => ({
   id: row.id,
   enabled: row.enabled === 1,
   quitAt: row.quit_at,
-  milestonesShown: parseShown(row.milestones_shown),
+  milestonesEarned: parseShown(row.milestones_shown),
+  celebratedSince: row.celebrated_since,
+  celebratedUpTo: row.celebrated_up_to ?? 0,
 });
 
 const toRelapse = (row: RelapseRow): Relapse => ({
@@ -69,7 +73,7 @@ export async function loadSnapshot(): Promise<Snapshot> {
   const habits = {} as Record<HabitId, Habit>;
   for (const id of HABIT_IDS) {
     const row = habitRows.find((r) => r.id === id);
-    habits[id] = row ? toHabit(row) : { id, enabled: false, quitAt: null, milestonesShown: [] };
+    habits[id] = row ? toHabit(row) : emptyHabit(id);
   }
 
   const raw = Object.fromEntries(settingRows.map((r) => [r.key, r.value]));
@@ -82,27 +86,20 @@ export async function loadSnapshot(): Promise<Snapshot> {
   return { habits, relapses: relapseRows.map(toRelapse), settings };
 }
 
+const SAVE_HABIT =
+  'UPDATE habits SET enabled = ?, quit_at = ?, milestones_shown = ?, celebrated_since = ?, celebrated_up_to = ? WHERE id = ?';
+const habitParams = (h: Habit) =>
+  [h.enabled ? 1 : 0, h.quitAt, JSON.stringify(h.milestonesEarned), h.celebratedSince, h.celebratedUpTo, h.id] as const;
+
 export async function saveHabit(habit: Habit): Promise<void> {
-  await getDatabase().runAsync(
-    'UPDATE habits SET enabled = ?, quit_at = ?, milestones_shown = ? WHERE id = ?',
-    habit.enabled ? 1 : 0,
-    habit.quitAt,
-    JSON.stringify(habit.milestonesShown),
-    habit.id,
-  );
+  await getDatabase().runAsync(SAVE_HABIT, ...habitParams(habit));
 }
 
 export async function completeOnboarding(habits: Habit[]): Promise<void> {
   const db = getDatabase();
   await db.withExclusiveTransactionAsync(async (tx) => {
     for (const h of habits) {
-      await tx.runAsync(
-        'UPDATE habits SET enabled = ?, quit_at = ?, milestones_shown = ? WHERE id = ?',
-        h.enabled ? 1 : 0,
-        h.quitAt,
-        JSON.stringify(h.milestonesShown),
-        h.id,
-      );
+      await tx.runAsync(SAVE_HABIT, ...habitParams(h));
     }
     await tx.runAsync("INSERT OR REPLACE INTO settings (key, value) VALUES ('onboarded', '1')");
   });
@@ -135,7 +132,7 @@ export async function resetAll(): Promise<void> {
     await tx.execAsync(`
       DELETE FROM relapses;
       DELETE FROM settings;
-      UPDATE habits SET enabled = 0, quit_at = NULL, milestones_shown = '[]';
+      UPDATE habits SET enabled = 0, quit_at = NULL, milestones_shown = '[]', celebrated_since = NULL, celebrated_up_to = 0;
     `);
   });
 }

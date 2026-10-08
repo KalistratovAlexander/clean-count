@@ -209,7 +209,7 @@ export default function CalendarScreen() {
                 {model.totals[h.id]}
               </Text>
               <Text style={styles.totalLabel} maxFontSizeMultiplier={MAX_FONT_SCALE_TEXT}>
-                {t.calendar.monthTotal(h.id)}
+                {t.calendar.monthTotal(model.totals[h.id], h.id)}
               </Text>
             </View>
           ))}

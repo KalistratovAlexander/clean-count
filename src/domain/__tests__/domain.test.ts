@@ -3,8 +3,17 @@ import { formatDayMonth, formatDayWithWeekday, formatQuitAt } from '@/i18n/forma
 import { t } from '@/i18n';
 
 import { buildMonth, monthRange } from '../calendar';
-import { addDays, diffDays, localDateTime, toZoned, weekdayMondayFirst, zonedDate, zonedMinutes } from '../localDate';
-import { goalProgress, nextMilestone, pendingMilestone, reachedMilestones } from '../milestones';
+import { addDays, calendarDiff, diffDays, localDateTime, toZoned, weekdayMondayFirst, zonedDate, zonedMinutes } from '../localDate';
+import {
+  achievedMilestones,
+  goalProgress,
+  lastReachedMilestone,
+  migrateLegacyMilestones,
+  nextMilestone,
+  pendingMilestone,
+  reachedMilestones,
+  tierMilestones,
+} from '../milestones';
 import { buildRelapse, isRelapseDateAllowed, relapseDateRange } from '../relapse';
 import type { Habit, Relapse } from '../types';
 
@@ -33,32 +42,63 @@ describe('календарные даты', () => {
 
 describe('вехи', () => {
   it('ближайшая веха', () => {
-    expect(nextMilestone(0)).toBe(1);
-    expect(nextMilestone(1)).toBe(3);
-    expect(nextMilestone(42)).toBe(60);
-    expect(nextMilestone(180)).toBe(365);
-    expect(nextMilestone(365)).toBe(730);
-    expect(nextMilestone(400)).toBe(730);
-    expect(nextMilestone(730)).toBe(1095);
+    expect(nextMilestone(0)).toBe(5);
+    expect(nextMilestone(4)).toBe(5);
+    expect(nextMilestone(5)).toBe(10);
+    expect(nextMilestone(42)).toBe(45);
+    expect(nextMilestone(209)).toBe(210);
+    expect(nextMilestone(365)).toBe(370);
   });
 
   it('достигнутые вехи', () => {
     expect(reachedMilestones(0)).toEqual([]);
-    expect(reachedMilestones(14)).toEqual([1, 3, 7, 14]);
-    expect(reachedMilestones(800)).toEqual([1, 3, 7, 14, 30, 60, 90, 180, 365, 730]);
+    expect(reachedMilestones(4)).toEqual([]);
+    expect(reachedMilestones(5)).toEqual([5]);
+    expect(reachedMilestones(23)).toEqual([5, 10, 15, 20]);
   });
 
   it('поздравление один раз на веху, при пропуске — с самой большой', () => {
-    expect(pendingMilestone(0, [])).toBeNull();
-    expect(pendingMilestone(42, [])).toBe(30);
-    expect(pendingMilestone(42, [1, 3, 7, 14, 30])).toBeNull();
-    expect(pendingMilestone(60, [1, 3, 7, 14, 30])).toBe(60);
-    expect(pendingMilestone(3, [1, 3, 7, 14, 30])).toBeNull();
+    const c = (celebratedSince: string | null, celebratedUpTo: number) => ({ celebratedSince, celebratedUpTo });
+    expect(lastReachedMilestone(4)).toBe(0);
+    expect(lastReachedMilestone(23)).toBe(20);
+    expect(pendingMilestone(4, '2026-09-01', c(null, 0))).toBeNull();
+    expect(pendingMilestone(23, '2026-09-01', c(null, 0))).toBe(20);
+    expect(pendingMilestone(23, '2026-09-01', c('2026-09-01', 20))).toBeNull();
+    expect(pendingMilestone(25, '2026-09-01', c('2026-09-01', 20))).toBe(25);
+    // Новая серия после срыва: прежние поздравления не считаются, веха 5 празднуется снова.
+    expect(pendingMilestone(5, '2026-10-01', c('2026-09-01', 40))).toBe(5);
   });
 
   it('прогресс до цели', () => {
-    expect(goalProgress(42)).toEqual({ goal: 60, remaining: 18, progress: 0.7 });
-    expect(goalProgress(0)).toEqual({ goal: 1, remaining: 1, progress: 0 });
+    expect(goalProgress(42)).toEqual({ goal: 45, remaining: 3, progress: 42 / 45 });
+    expect(goalProgress(0)).toEqual({ goal: 5, remaining: 5, progress: 0 });
+  });
+
+  it('достижения: показанные вехи остаются после срыва, текущие добавляются', () => {
+    expect(achievedMilestones([5, 10, 15], 2)).toEqual([5, 10, 15]);
+    expect(achievedMilestones([5, 10], 17)).toEqual([5, 10, 15]);
+    expect(achievedMilestones([], 0)).toEqual([]);
+    // Значения старой схемы и мусор игнорируются.
+    expect(achievedMilestones([1, 3, 7, 0, -5], 5)).toEqual([5]);
+  });
+
+  it('главные рубежи: четыре базовых, дальше по году до первого недостигнутого', () => {
+    expect(tierMilestones(0)).toEqual([30, 90, 180, 365]);
+    expect(tierMilestones(360)).toEqual([30, 90, 180, 365]);
+    expect(tierMilestones(365)).toEqual([30, 90, 180, 365, 730]);
+    expect(tierMilestones(1235)).toEqual([30, 90, 180, 365, 730, 1095, 1460]);
+    expect(t.achievements.tierName(30)).toBe('Месяц');
+    expect(t.achievements.tierName(365)).toBe('Год');
+    expect(t.achievements.tierName(730)).toBe('2 года');
+    expect(t.achievements.tierName(1825)).toBe('5 лет');
+  });
+
+  it('старые вехи переводятся на новую схему без поздравления задним числом', () => {
+    expect(migrateLegacyMilestones([1, 3, 7, 14, 30], 209)).toEqual(reachedMilestones(209));
+    expect(migrateLegacyMilestones([1], 3)).toEqual([]);
+    // Новая схема и пустой список не трогаются.
+    expect(migrateLegacyMilestones([], 209)).toBeNull();
+    expect(migrateLegacyMilestones([5, 10], 12)).toBeNull();
   });
 });
 
@@ -72,16 +112,73 @@ describe('склонения', () => {
   });
 
   it('фразы окна срыва согласуются с числом', () => {
-    expect(t.sheet.phrases[0]!(1)).toBe('Серия начнётся заново, но 1 чистый день уже ваш и никуда не денется.');
-    expect(t.sheet.phrases[0]!(206)).toBe('Серия начнётся заново, но 206 чистых дней уже ваши и никуда не денутся.');
+    expect(t.sheet.phrases[0]!(1)).toBe('Отсчёт с последнего срыва начнётся заново, но 1 чистый день уже ваш и никуда не денется.');
+    expect(t.sheet.phrases[0]!(206)).toBe('Отсчёт с последнего срыва начнётся заново, но 206 чистых дней уже ваши и никуда не денутся.');
     expect(t.sheet.phrases[1]!(243)).toBe('Это один эпизод, а не конец пути. 243 чистых дня остаются с вами.');
   });
 
   it('подписи главного экрана', () => {
-    expect(t.main.daysInRow(42)).toEqual(['дня', 'подряд']);
-    expect(t.main.streakDetails(5, 7, '17 августа')).toBe('5 ч 07 мин · с 17 августа');
-    expect(t.main.totalLabel(209, '3 марта')).toBe('дней с начала, 3 марта');
+    expect(`${t.main.counterDays(42)} ${t.main.counterSuffix}`).toBe('дня с начала');
+    expect(t.main.counterSince('3 марта')).toBe('с 3 марта');
+    expect(t.main.counterA11y(209, '3 марта')).toBe('209 дней с начала, с 3 марта');
     expect(t.main.cleanLabel(243)).toBe('чистых дня всего');
+    expect(t.main.sinceRelapseLabel(42, true)).toBe('чистых дня с последнего срыва');
+    expect(t.main.sinceRelapseLabel(1, false)).toBe('чистый день без срывов');
+  });
+
+  it('итог месяца в календаре склоняется', () => {
+    expect(t.calendar.monthTotal(0, 'alcohol')).toBe('срывов по алкоголю за месяц');
+    expect(t.calendar.monthTotal(1, 'smoking')).toBe('срыв по курению за месяц');
+    expect(t.calendar.monthTotal(2, 'alcohol')).toBe('срыва по алкоголю за месяц');
+    expect(t.calendar.monthTotalA11y(2, 'alcohol')).toBe('2 срыва по алкоголю за месяц');
+  });
+
+  it('подпись вехи: чистые дни без срыва', () => {
+    expect(t.milestone.days(40, 'alcohol')).toBe('дней без алкоголя');
+    expect(t.milestone.days(5, 'smoking')).toBe('дней без курения');
+  });
+
+  it('текст поздравления меняется по рубежам месяца, трёх месяцев, полугода и года', () => {
+    const tiers = [5, 30, 90, 180, 365].map((n) => t.milestone.text(n));
+    expect(new Set(tiers).size).toBe(5);
+    expect(t.milestone.text(25)).toBe(t.milestone.text(5));
+    expect(t.milestone.text(85)).toBe(t.milestone.text(30));
+    expect(t.milestone.text(175)).toBe(t.milestone.text(90));
+    expect(t.milestone.text(360)).toBe(t.milestone.text(180));
+    expect(t.milestone.text(730)).toBe(t.milestone.text(365));
+  });
+});
+
+describe('календарный срок в годах, месяцах и днях', () => {
+  it('полные годы и месяцы, остаток дней', () => {
+    expect(calendarDiff('2023-05-20', '2026-10-08')).toEqual({ years: 3, months: 4, days: 18 });
+    expect(calendarDiff('2026-03-03', '2026-09-28')).toEqual({ years: 0, months: 6, days: 25 });
+    expect(calendarDiff('2026-08-10', '2026-09-28')).toEqual({ years: 0, months: 1, days: 18 });
+    expect(calendarDiff('2026-10-01', '2026-10-08')).toEqual({ years: 0, months: 0, days: 7 });
+    expect(calendarDiff('2026-10-08', '2026-10-08')).toEqual({ years: 0, months: 0, days: 0 });
+  });
+
+  it('ровно год и ровно месяц', () => {
+    expect(calendarDiff('2025-10-08', '2026-10-08')).toEqual({ years: 1, months: 0, days: 0 });
+    expect(calendarDiff('2026-09-08', '2026-10-08')).toEqual({ years: 0, months: 1, days: 0 });
+  });
+
+  it('31-е число и февраль: опорный день сдвигается на конец месяца', () => {
+    expect(calendarDiff('2026-01-31', '2026-02-28')).toEqual({ years: 0, months: 0, days: 28 });
+    expect(calendarDiff('2026-01-31', '2026-03-01')).toEqual({ years: 0, months: 1, days: 1 });
+    expect(calendarDiff('2024-02-29', '2025-03-01')).toEqual({ years: 1, months: 0, days: 1 });
+  });
+
+  it('дата в будущем даёт нули', () => {
+    expect(calendarDiff('2026-10-09', '2026-10-08')).toEqual({ years: 0, months: 0, days: 0 });
+  });
+
+  it('подпись срока: нулевые части опускаются, меньше месяца — пусто', () => {
+    expect(t.main.period({ years: 3, months: 4, days: 18 })).toBe('3 года 4 месяца 18 дней');
+    expect(t.main.period({ years: 1, months: 0, days: 1 })).toBe('1 год 1 день');
+    expect(t.main.period({ years: 0, months: 6, days: 25 })).toBe('6 месяцев 25 дней');
+    expect(t.main.period({ years: 5, months: 0, days: 0 })).toBe('5 лет');
+    expect(t.main.period({ years: 0, months: 0, days: 7 })).toBe('');
   });
 });
 
@@ -95,7 +192,7 @@ describe('форматирование дат', () => {
 });
 
 describe('запись срыва', () => {
-  const h: Habit = { id: 'smoking', enabled: true, quitAt: '2026-09-01T00:00:00+03:00', milestonesShown: [] };
+  const h: Habit = { id: 'smoking', enabled: true, quitAt: '2026-09-01T00:00:00+03:00', milestonesEarned: [], celebratedSince: null, celebratedUpTo: 0 };
   const now = new Date('2026-09-10T12:00:00+03:00');
 
   it('дату нельзя выбрать раньше отказа или в будущем', () => {
@@ -118,8 +215,8 @@ describe('запись срыва', () => {
 });
 
 describe('календарь', () => {
-  const alcohol: Habit = { id: 'alcohol', enabled: true, quitAt: '2026-08-05T00:00:00+03:00', milestonesShown: [] };
-  const smoking: Habit = { id: 'smoking', enabled: true, quitAt: '2026-08-10T00:00:00+03:00', milestonesShown: [] };
+  const alcohol: Habit = { id: 'alcohol', enabled: true, quitAt: '2026-08-05T00:00:00+03:00', milestonesEarned: [], celebratedSince: null, celebratedUpTo: 0 };
+  const smoking: Habit = { id: 'smoking', enabled: true, quitAt: '2026-08-10T00:00:00+03:00', milestonesEarned: [], celebratedSince: null, celebratedUpTo: 0 };
   const mk = (id: string, habitId: Relapse['habitId'], date: string, kind: Relapse['kind']): Relapse => ({
     id, habitId, date, createdAt: `${date}T20:00:00+03:00`, kind, count: 1, note: null,
   });

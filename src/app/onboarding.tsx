@@ -13,7 +13,7 @@ import { readNow, useClock } from '@/hooks/clock';
 import { t } from '@/i18n';
 import { formatFullDate, formatTime } from '@/i18n/format';
 import { useAppStore } from '@/store/appStore';
-import { colors, fonts, habitColor, HIT, MAX_FONT_SCALE_TEXT, radii, spacing } from '@/theme';
+import { colors, fieldRow, fonts, habitColor, HIT, MAX_FONT_SCALE_TEXT, radii, spacing } from '@/theme';
 
 const STEPS = 3;
 
@@ -276,17 +276,7 @@ const styles = StyleSheet.create({
   dateCardHeader: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   swatch: { width: 12, height: 12, borderRadius: 4 },
   dateCardTitle: { fontFamily: fonts.text700, fontSize: 16, color: colors.textPrimary },
-  field: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    flexWrap: 'wrap',
-    gap: 8,
-    minHeight: 52,
-    borderRadius: 16,
-    backgroundColor: colors.background,
-    paddingHorizontal: 14,
-  },
+  field: { ...fieldRow, minHeight: 52 },
   fieldLabel: { fontFamily: fonts.text500, fontSize: 15, color: colors.textSecondary },
   fieldValue: { fontFamily: fonts.text700, fontSize: 15, color: colors.textPrimary },
   linkButton: { alignSelf: 'flex-start', minHeight: HIT, justifyContent: 'center', paddingHorizontal: 4 },

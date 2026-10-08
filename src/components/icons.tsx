@@ -35,6 +35,14 @@ export function SettingsIcon({ size = 22, color, strokeWidth = 1.8 }: IconProps)
   );
 }
 
+export function TrophyIcon({ size = 22, color, strokeWidth = 1.8 }: IconProps) {
+  return (
+    <Svg {...base(size)}>
+      <Path d="M8 4h8v5a4 4 0 0 1-8 0V4zM8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8 20h8M10 17h4" {...stroke(color, strokeWidth)} />
+    </Svg>
+  );
+}
+
 export function ChevronLeftIcon({ size = 22, color, strokeWidth = 2 }: IconProps) {
   return (
     <Svg {...base(size)}>
