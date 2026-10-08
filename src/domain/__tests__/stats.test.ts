@@ -1,14 +1,18 @@
 import { localDateAt, toZoned } from '../localDate';
-import { computeHabitStats, streakStart } from '../stats';
+import { computeHabitStats, daysSinceLastRelapse } from '../stats';
 import type { Habit, Relapse, RelapseKind } from '../types';
 
 const MSK = 'Europe/Moscow';
+/** Календарная дата момента в поясе — то, что экраны получают из часов. */
+const at = (iso: string, tz = MSK) => localDateAt(new Date(iso), tz);
 
 const habit = (quitAt: string, id: Habit['id'] = 'alcohol'): Habit => ({
   id,
   enabled: true,
   quitAt,
-  milestonesShown: [],
+  milestonesEarned: [],
+  celebratedSince: null,
+  celebratedUpTo: 0,
 });
 
 let seq = 0;
@@ -29,8 +33,7 @@ describe('пример из ТЗ', () => {
     relapse('2026-06-05', '2026-06-06T09:00:00+03:00', 'light'),
     relapse('2026-08-16', '2026-08-18T10:00:00+03:00', 'light'),
   ];
-  const now = new Date('2026-09-28T05:17:00+03:00');
-  const stats = computeHabitStats(h, relapses, now, MSK);
+  const stats = computeHabitStats(h, relapses, at('2026-09-28T05:17:00+03:00'));
 
   it('общий счёт — 209 дней с 3 марта', () => {
     expect(stats.totalDays).toBe(209);
@@ -45,49 +48,51 @@ describe('пример из ТЗ', () => {
     expect(stats.relapsesByKind).toEqual({ strong: 1, light: 2 });
   });
 
-  it('срыв задним числом: серия с 00:00 следующего дня — 42 дня, 5 ч 17 мин', () => {
-    expect(stats.streak.start.toISOString()).toBe(new Date('2026-08-17T00:00:00+03:00').toISOString());
-    expect(stats.streak).toMatchObject({ days: 42, hours: 5, minutes: 17 });
+  it('чистых дней с последнего срыва: после 16 августа — 42, серия с 17 августа', () => {
+    expect(stats.daysSinceRelapse).toBe(42);
+    expect(stats.streakStart).toBe('2026-08-17');
   });
 
-  it('следующая цель — 60 дней, осталось 18', () => {
-    expect(stats.goal).toBe(60);
-    expect(stats.goalRemaining).toBe(18);
-    expect(stats.goalProgress).toBeCloseTo(0.7);
+  it('следующая цель по чистым дням с последнего срыва — 45, осталось 3', () => {
+    expect(stats.goal).toBe(45);
+    expect(stats.goalRemaining).toBe(3);
+    expect(stats.goalProgress).toBeCloseTo(42 / 45);
+  });
+
+  it('после срыва цель начинается заново с 5 дней', () => {
+    const fresh = computeHabitStats(h, [...relapses, { ...relapses[0]!, id: 'today', date: '2026-09-28' }], at('2026-09-28T05:17:00+03:00'));
+    expect(fresh).toMatchObject({ daysSinceRelapse: 0, goal: 5, goalRemaining: 5, goalProgress: 0 });
   });
 });
 
-describe('текущая серия', () => {
+describe('чистые дни с последнего срыва', () => {
   const h = habit('2026-09-01T00:00:00+03:00');
 
-  it('без срывов считается от даты и времени отказа', () => {
-    const withTime = habit('2026-09-01T08:30:00+03:00');
-    const stats = computeHabitStats(withTime, [], new Date('2026-09-03T09:00:00+03:00'), MSK);
-    expect(stats.streak).toMatchObject({ days: 2, hours: 0, minutes: 30 });
+  it('без срывов равны общему счёту и не зависят от времени отказа', () => {
+    const withTime = habit('2026-09-01T18:30:00+03:00');
+    const stats = computeHabitStats(withTime, [], at('2026-09-03T09:00:00+03:00'));
+    expect(stats).toMatchObject({ totalDays: 2, cleanDays: 2, daysSinceRelapse: 2 });
   });
 
-  it('срыв, записанный сегодня, обнуляет серию с момента записи', () => {
-    const r = relapse('2026-09-10', '2026-09-10T14:30:00+03:00');
-    const stats = computeHabitStats(h, [r], new Date('2026-09-10T18:00:00+03:00'), MSK);
-    expect(stats.streak).toMatchObject({ days: 0, hours: 3, minutes: 30 });
+  it('срыв сегодня или вчера даёт 0, позавчера — 1', () => {
+    const today = at('2026-09-10T18:00:00+03:00');
+    expect(daysSinceLastRelapse(h, [relapse('2026-09-10', '2026-09-10T14:30:00+03:00')], today)).toBe(0);
+    expect(daysSinceLastRelapse(h, [relapse('2026-09-09', '2026-09-10T12:00:00+03:00')], today)).toBe(0);
+    expect(daysSinceLastRelapse(h, [relapse('2026-09-08', '2026-09-08T23:59:00+03:00')], today)).toBe(1);
   });
 
-  it('срыв задним числом после сегодняшнего не отодвигает серию назад', () => {
-    const today = relapse('2026-09-10', '2026-09-10T10:00:00+03:00');
+  it('момент и порядок записи срывов не важны', () => {
+    const today = at('2026-09-20T12:00:00+03:00');
+    const sameDay = relapse('2026-09-10', '2026-09-10T10:00:00+03:00');
     const backdated = relapse('2026-09-09', '2026-09-10T12:00:00+03:00');
-    expect(streakStart(h, [today, backdated], MSK).toISOString()).toBe(
-      new Date('2026-09-10T10:00:00+03:00').toISOString(),
-    );
-    expect(streakStart(h, [backdated, today], MSK).toISOString()).toBe(
-      new Date('2026-09-10T10:00:00+03:00').toISOString(),
-    );
+    expect(daysSinceLastRelapse(h, [sameDay, backdated], today)).toBe(9);
+    expect(daysSinceLastRelapse(h, [backdated, sameDay], today)).toBe(9);
   });
 
-  it('время отказа в будущем сегодня даёт нулевую серию, а не отрицательную', () => {
-    const later = habit('2026-09-10T23:00:00+03:00');
-    const stats = computeHabitStats(later, [], new Date('2026-09-10T12:00:00+03:00'), MSK);
-    expect(stats.streak).toMatchObject({ days: 0, hours: 0, minutes: 0 });
-    expect(stats.totalDays).toBe(0);
+  it('дата отказа в будущем даёт нули, а не отрицательные значения', () => {
+    const later = habit('2026-09-12T00:00:00+03:00');
+    const stats = computeHabitStats(later, [], at('2026-09-10T12:00:00+03:00'));
+    expect(stats).toMatchObject({ totalDays: 0, cleanDays: 0, daysSinceRelapse: 0 });
   });
 });
 
@@ -99,38 +104,34 @@ describe('несколько срывов', () => {
       relapse('2026-09-05', '2026-09-05T12:00:00+03:00', 'strong'),
       relapse('2026-09-05', '2026-09-05T20:00:00+03:00', 'light'),
     ];
-    const stats = computeHabitStats(h, relapses, new Date('2026-09-10T12:00:00+03:00'), MSK);
-    expect(stats.totalDays).toBe(9);
-    expect(stats.cleanDays).toBe(8);
-    expect(stats.relapseCount).toBe(2);
-    expect(stats.streak.start.toISOString()).toBe(new Date('2026-09-05T20:00:00+03:00').toISOString());
+    const stats = computeHabitStats(h, relapses, at('2026-09-10T12:00:00+03:00'));
+    expect(stats).toMatchObject({ totalDays: 9, cleanDays: 8, relapseCount: 2, daysSinceRelapse: 4 });
   });
 
   it('срыв сегодня не уменьшает чистые дни до конца дня, завтра — уменьшает', () => {
     const r = relapse('2026-09-10', '2026-09-10T10:00:00+03:00');
-    const today = computeHabitStats(h, [r], new Date('2026-09-10T12:00:00+03:00'), MSK);
-    expect(today.totalDays).toBe(9);
-    expect(today.cleanDays).toBe(9);
-    const tomorrow = computeHabitStats(h, [r], new Date('2026-09-11T12:00:00+03:00'), MSK);
-    expect(tomorrow.totalDays).toBe(10);
-    expect(tomorrow.cleanDays).toBe(9);
+    const today = computeHabitStats(h, [r], at('2026-09-10T12:00:00+03:00'));
+    expect(today).toMatchObject({ totalDays: 9, cleanDays: 9, daysSinceRelapse: 0 });
+    const tomorrow = computeHabitStats(h, [r], at('2026-09-11T12:00:00+03:00'));
+    expect(tomorrow).toMatchObject({ totalDays: 10, cleanDays: 9, daysSinceRelapse: 0 });
+    const dayAfter = computeHabitStats(h, [r], at('2026-09-12T12:00:00+03:00'));
+    expect(dayAfter).toMatchObject({ totalDays: 11, cleanDays: 10, daysSinceRelapse: 1 });
   });
 
   it('удаление срыва возвращает прежние показатели', () => {
-    const now = new Date('2026-09-10T12:00:00+03:00');
-    const before = computeHabitStats(h, [], now, MSK);
+    const today = at('2026-09-10T12:00:00+03:00');
+    const before = computeHabitStats(h, [], today);
     const r = relapse('2026-09-05', '2026-09-06T09:00:00+03:00');
-    const withRelapse = computeHabitStats(h, [r], now, MSK);
+    const withRelapse = computeHabitStats(h, [r], today);
     expect(withRelapse.cleanDays).toBe(before.cleanDays - 1);
-    expect(withRelapse.streak.days).toBeLessThan(before.streak.days);
-    expect(computeHabitStats(h, [r].filter((x) => x.id !== r.id), now, MSK)).toEqual(before);
+    expect(withRelapse.daysSinceRelapse).toBeLessThan(before.daysSinceRelapse);
+    expect(computeHabitStats(h, [r].filter((x) => x.id !== r.id), today)).toEqual(before);
   });
 
   it('срывы другой привычки не влияют', () => {
     const r = relapse('2026-09-05', '2026-09-05T12:00:00+03:00', 'cigarette', 'smoking');
-    const stats = computeHabitStats(h, [r], new Date('2026-09-10T12:00:00+03:00'), MSK);
-    expect(stats.relapseCount).toBe(0);
-    expect(stats.cleanDays).toBe(9);
+    const stats = computeHabitStats(h, [r], at('2026-09-10T12:00:00+03:00'));
+    expect(stats).toMatchObject({ relapseCount: 0, cleanDays: 9, daysSinceRelapse: 9 });
   });
 });
 
@@ -139,47 +140,36 @@ describe('изменение даты отказа', () => {
     relapse('2026-08-20', '2026-08-20T12:00:00+03:00'),
     relapse('2026-09-05', '2026-09-05T12:00:00+03:00'),
   ];
-  const now = new Date('2026-09-10T12:00:00+03:00');
+  const today = at('2026-09-10T12:00:00+03:00');
 
   it('срывы раньше новой даты не учитываются', () => {
-    const stats = computeHabitStats(habit('2026-09-01T00:00:00+03:00'), relapses, now, MSK);
+    const stats = computeHabitStats(habit('2026-09-01T00:00:00+03:00'), relapses, today);
     expect(stats.relapseCount).toBe(1);
     expect(stats.cleanDays).toBe(8);
   });
 
   it('перенос даты на более раннюю снова учитывает старые срывы', () => {
-    const stats = computeHabitStats(habit('2026-08-01T00:00:00+03:00'), relapses, now, MSK);
-    expect(stats.relapseCount).toBe(2);
-    expect(stats.totalDays).toBe(40);
-    expect(stats.cleanDays).toBe(38);
+    const stats = computeHabitStats(habit('2026-08-01T00:00:00+03:00'), relapses, today);
+    expect(stats).toMatchObject({ relapseCount: 2, totalDays: 40, cleanDays: 38, daysSinceRelapse: 4 });
   });
 });
 
 describe('время и часовые пояса', () => {
   it('смена даты в полночь увеличивает счётчики', () => {
     const h = habit('2026-09-01T00:00:00+03:00');
-    const before = computeHabitStats(h, [], new Date('2026-09-10T23:59:00+03:00'), MSK);
-    const after = computeHabitStats(h, [], new Date('2026-09-11T00:00:00+03:00'), MSK);
-    expect(before.totalDays).toBe(9);
-    expect(before.streak).toMatchObject({ days: 9, hours: 23, minutes: 59 });
-    expect(after.totalDays).toBe(10);
-    expect(after.streak).toMatchObject({ days: 10, hours: 0, minutes: 0 });
+    const before = computeHabitStats(h, [], at('2026-09-10T23:59:00+03:00'));
+    const after = computeHabitStats(h, [], at('2026-09-11T00:00:00+03:00'));
+    expect(before).toMatchObject({ totalDays: 9, daysSinceRelapse: 9 });
+    expect(after).toMatchObject({ totalDays: 10, daysSinceRelapse: 10 });
   });
 
-  it('переход на летнее время: сутки в 23 часа считаются целым днём', () => {
+  it('перевод часов на летнее и зимнее время не влияет на календарный счёт', () => {
     const BERLIN = 'Europe/Berlin';
-    // В ночь на 29 марта 2026 часы в Берлине переводятся с 02:00 на 03:00.
-    const h = habit('2026-03-28T00:00:00+01:00');
-    const stats = computeHabitStats(h, [], new Date('2026-03-30T00:00:00+02:00'), BERLIN);
-    expect(stats.streak).toMatchObject({ days: 2, hours: 0, minutes: 0 });
-    expect(stats.totalDays).toBe(2);
-  });
-
-  it('переход на зимнее время: сутки в 25 часов считаются целым днём', () => {
-    const BERLIN = 'Europe/Berlin';
-    const h = habit('2026-10-24T00:00:00+02:00');
-    const stats = computeHabitStats(h, [], new Date('2026-10-26T00:30:00+01:00'), BERLIN);
-    expect(stats.streak).toMatchObject({ days: 2, hours: 0, minutes: 30 });
+    // В ночь на 29 марта 2026 часы в Берлине переводятся с 02:00 на 03:00, 25 октября — обратно.
+    const spring = computeHabitStats(habit('2026-03-28T00:00:00+01:00'), [], at('2026-03-30T00:00:00+02:00', BERLIN));
+    const autumn = computeHabitStats(habit('2026-10-24T00:00:00+02:00'), [], at('2026-10-26T00:30:00+01:00', BERLIN));
+    expect(spring.totalDays).toBe(2);
+    expect(autumn.totalDays).toBe(2);
   });
 
   it('смена часового пояса не меняет записанные дни срывов', () => {
@@ -188,9 +178,9 @@ describe('время и часовые пояса', () => {
     const r = relapse('2026-09-10', toZoned(new Date('2026-09-10T23:30:00+03:00'), MSK));
     const now = new Date('2026-09-15T12:00:00+03:00');
     for (const tz of [MSK, 'Europe/London', 'Asia/Tokyo', 'America/New_York']) {
-      const stats = computeHabitStats(h, [r], now, tz);
+      const stats = computeHabitStats(h, [r], localDateAt(now, tz));
       expect(stats.relapseCount).toBe(1);
-      expect(stats.streak.start.toISOString()).toBe(new Date('2026-09-10T23:30:00+03:00').toISOString());
+      expect(stats.daysSinceRelapse).toBe(4);
     }
   });
 

@@ -76,7 +76,7 @@ function RelapseForm({ habit, presetDate, onClose, onSaved }: Omit<Props, 'visib
   const [saving, setSaving] = useState(false);
 
   const cleanDays = useMemo(
-    () => computeHabitStats(habit, relapses, opened.now, opened.tz).cleanDays,
+    () => computeHabitStats(habit, relapses, opened.today).cleanDays,
     // Фраза не должна меняться, пока окно открыто.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [],

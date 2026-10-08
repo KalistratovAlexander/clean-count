@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -8,8 +8,9 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { localDateAt } from '@/domain/localDate';
 import type { HabitStats } from '@/domain/stats';
+
+import { ChevronRightIcon } from './icons';
 import { KINDS_BY_HABIT, type HabitId, type LocalDate } from '@/domain/types';
 import { t } from '@/i18n';
 import { formatDayMonth } from '@/i18n/format';
@@ -18,14 +19,57 @@ import { colors, fonts, habitColor, MAX_FONT_SCALE_NUMBERS, MAX_FONT_SCALE_TEXT,
 interface CardProps {
   habitId: HabitId;
   stats: HabitStats;
-  today: LocalDate;
-  tz: string;
 }
 
-export function CounterCard({ habitId, stats, today, tz }: CardProps) {
-  const { streak } = stats;
-  const since = formatDayMonth(localDateAt(streak.start, tz), today);
-  const [daysWord, inRow] = t.main.daysInRow(streak.days);
+/** Основной счётчик: календарные дни с даты отказа. Срыв его не обнуляет. */
+export function CounterCard({ habitId, stats, today }: CardProps & { today: LocalDate }) {
+  const since = formatDayMonth(stats.quitDate, today);
+  const period = t.main.period(stats.period);
+  // Число всегда 112 pt (до пяти цифр помещается в ширину карточки). Если цифр четыре и больше
+  // или системный шрифт крупный, подпись рядом не помещается — ставим её под числом.
+  const stacked = useWindowDimensions().fontScale > 1.2 || stats.totalDays >= 1000;
+
+  return (
+    <View style={[styles.card, styles.counter, { backgroundColor: habitColor[habitId] }]}>
+      <Text style={styles.counterLabel} maxFontSizeMultiplier={MAX_FONT_SCALE_TEXT}>
+        {t.habitWithout[habitId]}
+      </Text>
+
+      <View
+        style={[styles.counterRow, stacked && styles.counterStacked]}
+        accessible
+        accessibilityRole="text"
+        accessibilityLabel={t.main.counterA11y(stats.totalDays, since)}
+      >
+        <Text style={styles.counterNumber} numberOfLines={1} maxFontSizeMultiplier={1}>
+          {stats.totalDays}
+        </Text>
+        <Text style={[styles.counterWord, stacked && styles.counterWordStacked]} maxFontSizeMultiplier={MAX_FONT_SCALE_NUMBERS}>
+          {t.main.counterDays(stats.totalDays)}
+          {stacked ? ' ' : '\n'}
+          {t.main.counterSuffix}
+        </Text>
+      </View>
+
+      {period !== '' && (
+        <Text style={styles.counterPeriod} maxFontSizeMultiplier={MAX_FONT_SCALE_TEXT} accessibilityRole="text">
+          {period}
+        </Text>
+      )}
+
+      <Text style={styles.counterDetails} maxFontSizeMultiplier={MAX_FONT_SCALE_TEXT} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
+        {t.main.counterSince(since)}
+      </Text>
+    </View>
+  );
+}
+
+/**
+ * Плитка чистых дней: всего и с последнего срыва, а под ними ближайшая цель.
+ * Цель считается по чистым дням с последнего срыва, поэтому полоса стоит рядом с этим числом.
+ */
+export function StatsCard({ habitId, stats, onGoalPress }: CardProps & { onGoalPress?: () => void }) {
+  const color = habitColor[habitId];
 
   const progress = useSharedValue(stats.goalProgress);
   useEffect(() => {
@@ -34,89 +78,63 @@ export function CounterCard({ habitId, stats, today, tz }: CardProps) {
   const barStyle = useAnimatedStyle(() => ({ width: `${progress.get() * 100}%` }));
 
   return (
-    <View style={[styles.counter, { backgroundColor: habitColor[habitId] }]}>
-      <Text style={styles.counterLabel} maxFontSizeMultiplier={MAX_FONT_SCALE_TEXT}>
-        {t.habitWithout[habitId]}
-      </Text>
-
-      <View
-        style={styles.streakRow}
-        accessible
-        accessibilityRole="text"
-        accessibilityLabel={t.main.streakA11y(streak.days, streak.hours, streak.minutes, since)}
-      >
-        <Text
-          style={styles.streakNumber}
-          numberOfLines={1}
-          adjustsFontSizeToFit
-          minimumFontScale={0.4}
-          maxFontSizeMultiplier={1}
-        >
-          {streak.days}
-        </Text>
-        <Text style={styles.streakWord} maxFontSizeMultiplier={MAX_FONT_SCALE_NUMBERS}>
-          {daysWord}
-          {'\n'}
-          {inRow}
-        </Text>
+    <View style={[styles.card, styles.stats]}>
+      <View style={styles.statsRow}>
+        <StatTile value={stats.cleanDays} label={t.main.cleanLabel(stats.cleanDays)} color={color} />
+        <View style={styles.statsDivider} />
+        <StatTile
+          value={stats.daysSinceRelapse}
+          label={t.main.sinceRelapseLabel(stats.daysSinceRelapse, stats.relapseCount > 0)}
+        />
       </View>
 
-      <Text style={styles.counterDetails} maxFontSizeMultiplier={MAX_FONT_SCALE_TEXT} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
-        {t.main.streakDetails(streak.hours, streak.minutes, since)}
-      </Text>
-
-      <View
-        style={styles.goal}
-        accessible
-        accessibilityRole="progressbar"
-        accessibilityLabel={t.main.goalA11y(stats.goal, stats.goalRemaining)}
-        accessibilityValue={{ min: 0, max: stats.goal, now: streak.days }}
+      <Pressable
+        onPress={onGoalPress}
+        disabled={!onGoalPress}
+        accessibilityRole={onGoalPress ? 'button' : 'progressbar'}
+        accessibilityLabel={`${t.main.goalA11y(stats.goal, stats.goalRemaining)}${onGoalPress ? `, ${t.main.goalOpen}` : ''}`}
+        accessibilityValue={{ min: 0, max: stats.goal, now: stats.daysSinceRelapse }}
+        style={({ pressed }) => [styles.goal, pressed && styles.pressed]}
       >
         <View style={styles.track}>
-          <Animated.View style={[styles.bar, barStyle]} />
+          <Animated.View style={[styles.bar, { backgroundColor: color }, barStyle]} />
         </View>
         <View style={styles.goalRow}>
           <Text style={styles.goalText} maxFontSizeMultiplier={MAX_FONT_SCALE_TEXT}>
             {t.main.goal(stats.goal)}
           </Text>
-          <Text style={styles.goalText} maxFontSizeMultiplier={MAX_FONT_SCALE_TEXT}>
-            {t.main.goalRemaining(stats.goalRemaining)}
-          </Text>
+          <View style={styles.goalRight}>
+            <Text style={[styles.goalText, styles.goalRemaining]} maxFontSizeMultiplier={MAX_FONT_SCALE_TEXT}>
+              {t.main.goalRemaining(stats.goalRemaining)}
+            </Text>
+            {onGoalPress && <ChevronRightIcon size={16} color={colors.textSecondary} />}
+          </View>
         </View>
-      </View>
+      </Pressable>
     </View>
   );
 }
 
-export function StatCards({ habitId, stats, today }: Omit<CardProps, 'tz'>) {
+function StatTile({ value, label, color }: { value: number; label: string; color?: string }) {
   return (
-    <View style={styles.statsRow}>
-      <View style={styles.statCard} accessible accessibilityLabel={`${stats.totalDays} ${t.main.totalLabel(stats.totalDays, formatDayMonth(stats.quitDate, today))}`}>
-        <Text style={styles.statValue} numberOfLines={1} adjustsFontSizeToFit maxFontSizeMultiplier={MAX_FONT_SCALE_NUMBERS}>
-          {stats.totalDays}
-        </Text>
-        <Text style={styles.statLabel} maxFontSizeMultiplier={MAX_FONT_SCALE_TEXT}>
-          {t.main.totalLabel(stats.totalDays, formatDayMonth(stats.quitDate, today))}
-        </Text>
-      </View>
-      <View style={styles.statCard} accessible accessibilityLabel={`${stats.cleanDays} ${t.main.cleanLabel(stats.cleanDays)}`}>
-        <Text
-          style={[styles.statValue, { color: habitColor[habitId] }]}
-          numberOfLines={1}
-          adjustsFontSizeToFit
-          maxFontSizeMultiplier={MAX_FONT_SCALE_NUMBERS}
-        >
-          {stats.cleanDays}
-        </Text>
-        <Text style={styles.statLabel} maxFontSizeMultiplier={MAX_FONT_SCALE_TEXT}>
-          {t.main.cleanLabel(stats.cleanDays)}
-        </Text>
-      </View>
+    <View style={styles.stat} accessible accessibilityLabel={`${value} ${label}`}>
+      <Text
+        style={[styles.statValue, color ? { color } : null]}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        maxFontSizeMultiplier={MAX_FONT_SCALE_NUMBERS}
+      >
+        {value}
+      </Text>
+      <Text style={styles.statLabel} maxFontSizeMultiplier={MAX_FONT_SCALE_TEXT}>
+        {label}
+      </Text>
     </View>
   );
 }
 
-export function RelapsesCard({ habitId, stats }: Pick<CardProps, 'habitId' | 'stats'>) {
+/** Карточка срывов. Прижата к низу страницы, чтобы верхним карточкам оставалось больше места. */
+export function RelapsesCard({ habitId, stats }: CardProps) {
   const kinds = KINDS_BY_HABIT[habitId];
   // Для алкоголя показываем оба вида всегда, для курения — только встречавшиеся.
   const chips = habitId === 'alcohol' ? kinds : kinds.filter((k) => (stats.relapsesByKind[k] ?? 0) > 0);
@@ -164,17 +182,13 @@ export function RelapsesCard({ habitId, stats }: Pick<CardProps, 'habitId' | 'st
 }
 
 const styles = StyleSheet.create({
-  counter: {
-    borderRadius: radii.counter,
-    paddingTop: 28,
-    paddingHorizontal: 24,
-    paddingBottom: 24,
-    gap: 14,
-  },
+  /** Общая форма большой карточки и плитки чистых дней: одинаковые скругление и поля. */
+  card: { borderRadius: radii.counter, paddingHorizontal: 24 },
+  counter: { paddingTop: 28, paddingBottom: 26, gap: 14 },
   counterLabel: { color: colors.onAccent, opacity: 0.9, fontFamily: fonts.text500, fontSize: 15 },
-  streakRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 12 },
-  streakNumber: {
-    flexShrink: 1,
+  counterRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 12 },
+  counterStacked: { flexDirection: 'column', alignItems: 'flex-start', gap: 4 },
+  counterNumber: {
     color: colors.onAccent,
     fontFamily: fonts.display800,
     fontSize: 112,
@@ -182,26 +196,34 @@ const styles = StyleSheet.create({
     letterSpacing: -4.5,
     includeFontPadding: false,
   },
-  streakWord: {
+  counterWord: {
     color: colors.onAccent,
     fontFamily: fonts.display700,
     fontSize: 22,
     lineHeight: 24,
     paddingBottom: 12,
   },
+  counterWordStacked: { paddingBottom: 0 },
+  counterPeriod: { color: colors.onAccent, fontFamily: fonts.text600, fontSize: 17, marginTop: -4 },
   counterDetails: { color: colors.onAccent, opacity: 0.9, fontFamily: fonts.text400, fontSize: 15 },
-  goal: { gap: 8, paddingTop: 6 },
-  track: { height: 10, borderRadius: 5, backgroundColor: colors.progressTrack, overflow: 'hidden' },
-  bar: { height: 10, borderRadius: 5, backgroundColor: colors.onAccent },
-  goalRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 8 },
-  goalText: { color: colors.onAccent, fontFamily: fonts.text600, fontSize: 13 },
 
-  statsRow: { flexDirection: 'row', gap: 12 },
-  statCard: { flex: 1, backgroundColor: colors.surface, borderRadius: radii.card, padding: 18, gap: 6 },
-  statValue: { color: colors.textPrimary, fontFamily: fonts.display700, fontSize: 30 },
+  stats: { backgroundColor: colors.surface, paddingTop: 24, paddingBottom: 22, gap: 18 },
+  statsRow: { flexDirection: 'row', gap: 16 },
+  statsDivider: { width: 1, backgroundColor: colors.cardBorder },
+  stat: { flex: 1, gap: 6 },
+  statValue: { color: colors.textPrimary, fontFamily: fonts.display700, fontSize: 34 },
   statLabel: { color: colors.textSecondary, fontFamily: fonts.text400, fontSize: 13, lineHeight: 17 },
+  goal: { gap: 8 },
+  track: { height: 10, borderRadius: 5, backgroundColor: colors.subtle, overflow: 'hidden' },
+  bar: { height: 10, borderRadius: 5 },
+  goalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
+  goalRight: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  pressed: { opacity: 0.6 },
+  goalText: { color: colors.textPrimary, fontFamily: fonts.text600, fontSize: 13 },
+  goalRemaining: { color: colors.textSecondary },
 
   relapses: {
+    marginTop: 'auto',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',

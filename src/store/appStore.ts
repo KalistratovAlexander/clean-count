@@ -3,9 +3,10 @@ import { create } from 'zustand';
 
 import * as database from '@/db/database';
 import * as repo from '@/db/repo';
-import { reachedMilestones } from '@/domain/milestones';
+import { achievedMilestones, migrateLegacyMilestones, reachedMilestones } from '@/domain/milestones';
 import { buildRelapse, type RelapseInput } from '@/domain/relapse';
-import { HABIT_IDS, type Habit, type HabitId, type Relapse, type Settings, type ZonedDateTime } from '@/domain/types';
+import { daysSinceLastRelapse, streakStartDate } from '@/domain/stats';
+import { emptyHabit, HABIT_IDS, type Habit, type HabitId, type LocalDate, type Relapse, type Settings, type ZonedDateTime } from '@/domain/types';
 
 type Status = 'loading' | 'ready' | 'error';
 
@@ -15,19 +16,20 @@ interface AppState {
   relapses: Relapse[];
   settings: Settings;
 
-  load(): Promise<void>;
+  /** `today` — текущая календарная дата устройства, нужна для перевода старых вех. */
+  load(today: LocalDate): Promise<void>;
   completeOnboarding(quitDates: Partial<Record<HabitId, ZonedDateTime>>): Promise<void>;
   addRelapse(input: RelapseInput, now: Date, tz: string): Promise<Relapse>;
   removeRelapse(id: string): Promise<void>;
   setQuitAt(id: HabitId, quitAt: ZonedDateTime): Promise<void>;
   setHabitEnabled(id: HabitId, enabled: boolean, quitAt?: ZonedDateTime): Promise<void>;
-  markMilestonesShown(id: HabitId, streakDays: number): Promise<void>;
+  /** Поздравили с вехой `milestone` в серии, начавшейся `streakStart`; веха попадает в достижения. */
+  markCelebrated(id: HabitId, streakStart: LocalDate, milestone: number): Promise<void>;
   setLastScreen(id: HabitId): void;
   setExcludeFromBackup(excluded: boolean): Promise<void>;
   resetAll(): Promise<void>;
 }
 
-const emptyHabit = (id: HabitId): Habit => ({ id, enabled: false, quitAt: null, milestonesShown: [] });
 
 export const useAppStore = create<AppState>()((set, get) => {
   const updateHabit = async (id: HabitId, patch: Partial<Habit>) => {
@@ -42,10 +44,32 @@ export const useAppStore = create<AppState>()((set, get) => {
     relapses: [],
     settings: { onboarded: false, lastScreen: null, excludeFromBackup: false },
 
-    async load() {
+    async load(today) {
       try {
         await database.initDatabase();
         const snapshot = await repo.loadSnapshot();
+        // Приводим вехи в порядок. Запись в базу — по возможности: если она не удалась,
+        // работаем с исправленными данными в памяти.
+        for (const id of HABIT_IDS) {
+          const habit = snapshot.habits[id];
+          if (!habit.quitAt) continue;
+          const days = daysSinceLastRelapse(habit, snapshot.relapses, today);
+          let next = habit;
+          // Старая схема вех (1, 3, 7, …) заменяется на достигнутые по текущей серии, без поздравления задним числом.
+          const migrated = migrateLegacyMilestones(next.milestonesEarned, days);
+          if (migrated) next = { ...next, milestonesEarned: migrated };
+          // Первый запуск с поздравлениями по сериям: уже заработанные вехи текущей серии считаем показанными.
+          if (next.celebratedSince === null) {
+            const shown = reachedMilestones(days).filter((m) => next.milestonesEarned.includes(m));
+            next = { ...next, celebratedSince: streakStartDate(next, snapshot.relapses), celebratedUpTo: shown[shown.length - 1] ?? 0 };
+          }
+          // Вехи, достигнутые пока приложение не открывали, записываем в достижения, чтобы они не пропали после срыва.
+          const earned = achievedMilestones(next.milestonesEarned, days);
+          if (earned.length !== next.milestonesEarned.length) next = { ...next, milestonesEarned: earned };
+          if (next === habit) continue;
+          snapshot.habits[id] = next;
+          await repo.saveHabit(next).catch(console.error);
+        }
         set({
           ...snapshot,
           settings: { ...snapshot.settings, excludeFromBackup: database.isExcludedFromBackup() },
@@ -60,7 +84,7 @@ export const useAppStore = create<AppState>()((set, get) => {
     async completeOnboarding(quitDates) {
       const habits = HABIT_IDS.map((id): Habit => {
         const quitAt = quitDates[id];
-        return quitAt ? { id, enabled: true, quitAt, milestonesShown: [] } : emptyHabit(id);
+        return quitAt ? { ...emptyHabit(id), enabled: true, quitAt } : emptyHabit(id);
       });
       await repo.completeOnboarding(habits);
       const first = habits.find((h) => h.enabled)?.id ?? null;
@@ -93,13 +117,13 @@ export const useAppStore = create<AppState>()((set, get) => {
       await updateHabit(id, { enabled, quitAt: quitAt ?? habit.quitAt });
     },
 
-    async markMilestonesShown(id, streakDays) {
+    async markCelebrated(id, streakStart, milestone) {
       const habit = get().habits[id];
-      const shown = Array.from(new Set([...habit.milestonesShown, ...reachedMilestones(streakDays)])).sort(
-        (a, b) => a - b,
-      );
-      if (shown.length === habit.milestonesShown.length) return;
-      await updateHabit(id, { milestonesShown: shown });
+      await updateHabit(id, {
+        celebratedSince: streakStart,
+        celebratedUpTo: milestone,
+        milestonesEarned: achievedMilestones(habit.milestonesEarned, milestone),
+      });
     },
 
     setLastScreen(id) {

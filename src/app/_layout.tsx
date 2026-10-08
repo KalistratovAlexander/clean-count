@@ -8,7 +8,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { PickerHost } from '@/components/DatePicker';
-import { ClockProvider } from '@/hooks/clock';
+import { ClockProvider, readNow } from '@/hooks/clock';
 import { t } from '@/i18n';
 import { useAppStore } from '@/store/appStore';
 import { colors, fonts } from '@/theme';
@@ -22,7 +22,7 @@ export default function RootLayout() {
   const load = useAppStore((s) => s.load);
 
   useEffect(() => {
-    load();
+    load(readNow().today);
   }, [load]);
 
   const ready = (fontsLoaded || !!fontError) && status !== 'loading';

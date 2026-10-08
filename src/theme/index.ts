@@ -1,3 +1,5 @@
+import type { ViewStyle } from 'react-native';
+
 import type { HabitId } from '@/domain/types';
 
 /** Токены стиля «Энергия» (ТЗ, раздел 7, и макеты). */
@@ -54,6 +56,22 @@ export const spacing = {
   screenBottom: 16,
   gap: 18,
 } as const;
+
+/**
+ * Строка «подпись — значение» в настройках и онбординге. При крупном шрифте значение
+ * переносится на вторую строку; alignContent центрирует строки по вертикали внутри minHeight.
+ */
+export const fieldRow: ViewStyle = {
+  flexDirection: 'row',
+  alignItems: 'center',
+  alignContent: 'center',
+  justifyContent: 'space-between',
+  flexWrap: 'wrap',
+  gap: 8,
+  paddingHorizontal: 14,
+  borderRadius: 16,
+  backgroundColor: colors.background,
+};
 
 /** Минимальная зона нажатия (ТЗ: не меньше 44×44). */
 export const HIT = 44;

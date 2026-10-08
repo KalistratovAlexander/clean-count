@@ -1,24 +1,22 @@
-import { addDays, diffDays, fromParts, localDateAt, startOfLocalDay, toParts, zonedDate, zonedInstant } from './localDate';
+import { addDays, calendarDiff, type CalendarPeriod, diffDays, zonedDate } from './localDate';
 import { goalProgress } from './milestones';
-import { instantFromWallClock, wallClock } from './tz';
-import type { Habit, LocalDate, Relapse, RelapseKind } from './types';
-
-export interface Streak {
-  start: Date;
-  days: number;
-  hours: number;
-  minutes: number;
-}
+import type { Habit, LocalDate, Relapse, RelapseKind, ZonedDateTime } from './types';
 
 export interface HabitStats {
   quitDate: LocalDate;
-  streak: Streak;
-  /** Общий счёт: календарные дни от даты отказа до сегодня. */
+  /** Общий счёт: календарные дни от даты отказа до сегодня. Основной счётчик, срыв его не обнуляет. */
   totalDays: number;
+  /** Тот же срок в годах, месяцах и днях по календарю. */
+  period: CalendarPeriod;
   /** Общий счёт минус завершённые дни, в которые был срыв. */
   cleanDays: number;
+  /** Первый день текущей серии: день после последнего срыва или дата отказа. */
+  streakStart: LocalDate;
+  /** Завершённые чистые дни после дня последнего срыва; без срывов равно общему счёту. */
+  daysSinceRelapse: number;
   relapseCount: number;
   relapsesByKind: Partial<Record<RelapseKind, number>>;
+  /** Следующая цель считается по чистым дням с последнего срыва и после срыва начинается заново с 5 дней. */
   goal: number;
   goalRemaining: number;
   goalProgress: number;
@@ -31,69 +29,57 @@ export function countedRelapses(habit: Habit, relapses: readonly Relapse[]): Rel
   return relapses.filter((r) => r.habitId === habit.id && r.date >= quitDate);
 }
 
-/** Записан ли срыв в тот же день, к которому относится (а не задним числом). */
-export function isRecordedSameDay(relapse: Relapse): boolean {
-  return zonedDate(relapse.createdAt) === relapse.date;
+/** Общий счёт: календарные дни от даты отказа до `today`, не меньше нуля. */
+export function totalDaysSince(quitAt: ZonedDateTime, today: LocalDate): number {
+  return Math.max(0, diffDays(today, zonedDate(quitAt)));
 }
 
 /**
- * Начало текущей серии. Срыв, записанный в свой же день, обнуляет серию с момента
- * записи; записанный задним числом — с 00:00 следующего дня. Берём самый поздний
- * из кандидатов, поэтому порядок записи срывов не важен.
+ * Чистые дни с последнего срыва: завершённые дни после дня последнего срыва.
+ * Сегодняшний день ещё не завершён и не считается, поэтому срыв сегодня или
+ * вчера даёт 0. Без срывов равно общему счёту. Момент записи срыва роли не играет,
+ * порядок записей тоже.
  */
-export function streakStart(habit: Habit, relapses: readonly Relapse[], tz: string): Date {
+export function daysSinceLastRelapse(habit: Habit, relapses: readonly Relapse[], today: LocalDate): number {
+  if (!habit.quitAt) return 0;
+  return Math.max(0, diffDays(today, streakStartDate(habit, relapses)));
+}
+
+/** Первый день текущей серии: день после последнего учитываемого срыва или дата отказа. */
+export function streakStartDate(habit: Habit, relapses: readonly Relapse[]): LocalDate {
   if (!habit.quitAt) throw new Error(`Habit ${habit.id} has no quit date`);
-  let start = zonedInstant(habit.quitAt).getTime();
+  let from = zonedDate(habit.quitAt);
   for (const r of countedRelapses(habit, relapses)) {
-    const candidate = isRecordedSameDay(r)
-      ? zonedInstant(r.createdAt).getTime()
-      : startOfLocalDay(addDays(r.date, 1), tz).getTime();
-    if (candidate > start) start = candidate;
+    const next = addDays(r.date, 1);
+    if (next > from) from = next;
   }
-  return new Date(start);
+  return from;
 }
 
-/**
- * Полные календарные дни плюс часы и минуты. День считается по настенным часам
- * пояса, поэтому сутки с переводом часов (23 или 25 часов) — это ровно один день.
- */
-export function streakDuration(start: Date, now: Date, tz: string): Omit<Streak, 'start'> {
-  if (now.getTime() <= start.getTime()) return { days: 0, hours: 0, minutes: 0 };
-  const from = wallClock(start, tz);
-  const to = wallClock(now, tz);
-  const timeOfDay = (c: typeof from) => (c.hour * 60 + c.minute) * 60 + c.second;
-  let days = diffDays(fromParts(to), fromParts(from));
-  if (timeOfDay(to) < timeOfDay(from)) days -= 1;
-  const anchorDate = addDays(fromParts(from), days);
-  const anchor = instantFromWallClock({ ...toParts(anchorDate), hour: from.hour, minute: from.minute, second: from.second }, tz);
-  const restMinutes = Math.max(0, Math.floor((now.getTime() - anchor.getTime()) / 60_000));
-  return { days: Math.max(0, days), hours: Math.floor(restMinutes / 60), minutes: restMinutes % 60 };
-}
-
-export function computeHabitStats(habit: Habit, relapses: readonly Relapse[], now: Date, tz: string): HabitStats {
+export function computeHabitStats(habit: Habit, relapses: readonly Relapse[], today: LocalDate): HabitStats {
   if (!habit.quitAt) throw new Error(`Habit ${habit.id} has no quit date`);
   const quitDate = zonedDate(habit.quitAt);
-  const today = localDateAt(now, tz);
   const counted = countedRelapses(habit, relapses);
 
-  const start = streakStart(habit, relapses, tz);
-  const streak = { start, ...streakDuration(start, now, tz) };
-
-  const totalDays = Math.max(0, diffDays(today, quitDate));
+  const totalDays = totalDaysSince(habit.quitAt, today);
   // Сегодняшний день ещё не завершён: он не входит ни в общий счёт, ни в «грязные» дни.
   const dirtyDays = new Set(counted.filter((r) => r.date < today).map((r) => r.date)).size;
   const cleanDays = Math.max(0, totalDays - dirtyDays);
+  const streakStart = streakStartDate(habit, relapses);
+  const daysSinceRelapse = Math.max(0, diffDays(today, streakStart));
 
   const relapsesByKind: Partial<Record<RelapseKind, number>> = {};
   for (const r of counted) relapsesByKind[r.kind] = (relapsesByKind[r.kind] ?? 0) + 1;
 
-  const goal = goalProgress(streak.days);
+  const goal = goalProgress(daysSinceRelapse);
 
   return {
     quitDate,
-    streak,
     totalDays,
+    period: calendarDiff(quitDate, today),
     cleanDays,
+    streakStart,
+    daysSinceRelapse,
     relapseCount: counted.length,
     relapsesByKind,
     goal: goal.goal,

@@ -15,7 +15,7 @@ import { readNow } from '@/hooks/clock';
 import { t } from '@/i18n';
 import { formatFullDate, formatTime } from '@/i18n/format';
 import { useAppStore } from '@/store/appStore';
-import { colors, fonts, habitColor, MAX_FONT_SCALE_TEXT, radii, spacing } from '@/theme';
+import { colors, fieldRow, fonts, habitColor, MAX_FONT_SCALE_TEXT, radii, spacing } from '@/theme';
 
 function confirm(title: string, message: string, action: string, destructive = false): Promise<boolean> {
   return new Promise((resolve) => {
@@ -240,17 +240,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 44 },
   swatch: { width: 12, height: 12, borderRadius: 4 },
   rowTitle: { flex: 1, fontFamily: fonts.text600, fontSize: 16, color: colors.textPrimary },
-  settingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    flexWrap: 'wrap',
-    gap: 8,
-    minHeight: 48,
-    paddingHorizontal: 14,
-    borderRadius: 16,
-    backgroundColor: colors.background,
-  },
+  settingRow: { ...fieldRow, minHeight: 48 },
   settingLabel: { fontFamily: fonts.text500, fontSize: 15, color: colors.textSecondary },
   settingValueWrap: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   settingValue: { fontFamily: fonts.text700, fontSize: 15, color: colors.textPrimary },

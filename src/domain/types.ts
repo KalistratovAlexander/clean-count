@@ -21,8 +21,23 @@ export interface Habit {
   enabled: boolean;
   /** null — привычка ещё ни разу не настраивалась. */
   quitAt: ZonedDateTime | null;
-  milestonesShown: number[];
+  /** Достижения: вехи, достигнутые за всё время. Срыв их не обнуляет. */
+  milestonesEarned: number[];
+  /** Первый день серии, в которой поздравляли в последний раз; null — ещё ни разу. */
+  celebratedSince: LocalDate | null;
+  /** До какой вехи в той серии уже поздравляли. */
+  celebratedUpTo: number;
 }
+
+/** Привычка, которую ещё не настраивали. */
+export const emptyHabit = (id: HabitId): Habit => ({
+  id,
+  enabled: false,
+  quitAt: null,
+  milestonesEarned: [],
+  celebratedSince: null,
+  celebratedUpTo: 0,
+});
 
 export interface Relapse {
   id: string;

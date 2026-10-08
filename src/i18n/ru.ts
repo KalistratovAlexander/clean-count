@@ -5,8 +5,14 @@ import { plural, type PluralForms } from './plural';
 const DAY: PluralForms = ['день', 'дня', 'дней'];
 const CLEAN_DAY: PluralForms = ['чистый день', 'чистых дня', 'чистых дней'];
 const RELAPSE: PluralForms = ['срыв', 'срыва', 'срывов'];
+const YEAR: PluralForms = ['год', 'года', 'лет'];
+const MONTH: PluralForms = ['месяц', 'месяца', 'месяцев'];
 
 const cleanDays = (n: number) => `${n} ${plural(n, CLEAN_DAY)}`;
+const COUNTER_SUFFIX = 'с начала';
+const counterSince = (since: string) => `с ${since}`;
+const monthTotal = (n: number, habit: HabitId) =>
+  `${plural(n, RELAPSE)} по ${habit === 'alcohol' ? 'алкоголю' : 'курению'} за месяц`;
 const remain = (n: number) => plural(n, ['остаётся', 'остаются', 'остаются']);
 
 const HABIT_WITHOUT_GENITIVE: Record<HabitId, string> = {
@@ -58,7 +64,7 @@ export const ru = {
     welcomeTitle: 'Чистый счёт',
     welcomeText: 'Считаем дни без алкоголя и курения. Срыв не обнуляет ваш прогресс.',
     welcomePoints: [
-      'Серия и общий счёт чистых дней',
+      'Общий счёт и чистые дни с последнего срыва',
       'Календарь срывов',
       'Всё хранится только на телефоне',
     ],
@@ -84,17 +90,31 @@ export const ru = {
   main: {
     calendar: 'Календарь срывов',
     settings: 'Настройки',
-    daysInRow: (n: number) => [plural(n, DAY), 'подряд'] as const,
-    streakDetails: (hours: number, minutes: number, since: string) =>
-      `${hours} ч ${String(minutes).padStart(2, '0')} мин · с ${since}`,
-    streakA11y: (days: number, hours: number, minutes: number, since: string) =>
-      `${days} ${plural(days, DAY)} подряд, ${hours} ч ${minutes} мин, с ${since}`,
+    achievements: 'Достижения',
+    goalOpen: 'открыть достижения',
+    /** Подпись рядом с основным счётчиком: «7 дней с начала», ниже «с 1 октября». */
+    counterDays: (n: number) => plural(n, DAY),
+    counterSuffix: COUNTER_SUFFIX,
+    counterSince,
+    counterA11y: (days: number, since: string) => `${days} ${plural(days, DAY)} ${COUNTER_SUFFIX}, ${counterSince(since)}`,
+    /** «3 года 4 месяца 18 дней»: нулевые части опускаются; меньше месяца — пустая строка, число дней и так на экране. */
+    period: ({ years, months, days }: { years: number; months: number; days: number }) =>
+      years === 0 && months === 0
+        ? ''
+        : [
+            years > 0 ? `${years} ${plural(years, YEAR)}` : '',
+            months > 0 ? `${months} ${plural(months, MONTH)}` : '',
+            days > 0 ? `${days} ${plural(days, DAY)}` : '',
+          ]
+            .filter(Boolean)
+            .join(' '),
     goal: (n: number) => `Цель: ${n} ${plural(n, DAY)}`,
     goalRemaining: (n: number) => `ещё ${n}`,
     goalA11y: (goal: number, remaining: number) =>
       `Следующая цель ${goal} ${plural(goal, DAY)}, осталось ${remaining}`,
-    totalLabel: (n: number, since: string) => `${plural(n, DAY)} с начала, ${since}`,
     cleanLabel: (n: number) => `${plural(n, CLEAN_DAY)} всего`,
+    sinceRelapseLabel: (n: number, hadRelapse: boolean) =>
+      `${plural(n, CLEAN_DAY)} ${hadRelapse ? 'с последнего срыва' : 'без срывов'}`,
     relapses: 'Срывы',
     noRelapses: 'Срывов нет',
     relapseChip: (kind: string, n: number) => `${kind} · ${n}`,
@@ -105,13 +125,13 @@ export const ru = {
     title: 'Записать срыв',
     phrases: [
       (n: number) =>
-        `Серия начнётся заново, но ${cleanDays(n)} уже ${plural(n, ['ваш', 'ваши', 'ваши'])} и никуда не ${plural(n, ['денется', 'денутся', 'денутся'])}.`,
+        `Отсчёт с последнего срыва начнётся заново, но ${cleanDays(n)} уже ${plural(n, ['ваш', 'ваши', 'ваши'])} и никуда не ${plural(n, ['денется', 'денутся', 'денутся'])}.`,
       (n: number) => `Это один эпизод, а не конец пути. ${cleanDays(n)} ${remain(n)} с вами.`,
       (n: number) => `Вы уже прошли ${cleanDays(n)}. Этого никто не отнимет.`,
       (n: number) => `Срыв — это не провал. ${cleanDays(n)} — ваш результат, и он сохранится.`,
       (n: number) => `Отметим и пойдём дальше: ${cleanDays(n)} ${remain(n)} в вашем счёте.`,
     ],
-    phraseNoDays: 'Серия начнётся заново. Главное — что вы продолжаете.',
+    phraseNoDays: 'Отсчёт начнётся заново. Главное — что вы продолжаете.',
     alcoholKind: 'Что это было',
     smokingKind: 'Что курили',
     count: 'Сколько раз',
@@ -154,10 +174,8 @@ export const ru = {
     deleteText: 'Показатели будут пересчитаны.',
     delete: 'Удалить запись',
     cancel: 'Отмена',
-    monthTotal: (habit: HabitId) =>
-      habit === 'alcohol' ? 'срывов по алкоголю за месяц' : 'срывов по курению за месяц',
-    monthTotalA11y: (n: number, habit: HabitId) =>
-      `${n} ${plural(n, RELAPSE)} по ${habit === 'alcohol' ? 'алкоголю' : 'курению'} за месяц`,
+    monthTotal,
+    monthTotalA11y: (n: number, habit: HabitId) => `${n} ${monthTotal(n, habit)}`,
     dayA11y: (label: string, state: string) => `${label}${state ? `, ${state}` : ''}`,
     stateA11y: {
       clean: 'чистый день',
@@ -169,15 +187,54 @@ export const ru = {
     },
   },
 
+  achievements: {
+    title: 'Достижения',
+    count: (n: number) => `${n} ${plural(n, ['достижение', 'достижения', 'достижений'])}`,
+    none: 'Пока нет достижений',
+    inStreak: (n: number) => `В текущей серии — ${n} ${plural(n, ['веха', 'вехи', 'вех'])}`,
+    last: (n: number, habit: HabitId) => `Последнее — ${n} ${plural(n, DAY)} ${HABIT_WITHOUT_GENITIVE[habit]}`,
+    next: (goal: number, remaining: number) =>
+      `Следующая цель — ${goal} ${plural(goal, DAY)}, ещё ${remaining} ${plural(remaining, DAY)}`,
+    tiers: 'Главные рубежи',
+    all: 'Все вехи',
+    /** Название рубежа: месяц, три месяца, полгода, год, далее по годам. */
+    tierName: (days: number) => {
+      if (days === 30) return 'Месяц';
+      if (days === 90) return 'Три месяца';
+      if (days === 180) return 'Полгода';
+      const years = Math.round(days / 365);
+      return years === 1 ? 'Год' : `${years} ${plural(years, YEAR)}`;
+    },
+    days: (n: number) => `${n} ${plural(n, DAY)}`,
+    reached: 'достигнуто',
+    earlier: 'получено раньше',
+    remaining: (n: number) => `ещё ${n} ${plural(n, DAY)}`,
+    badgeA11y: (n: number, state: 'current' | 'earlier' | 'goal' | 'locked') =>
+      `${n} ${plural(n, DAY)}: ${
+        state === 'current' ? 'достигнуто в текущей серии' : state === 'earlier' ? 'получено раньше' : state === 'goal' ? 'текущая цель' : 'впереди'
+      }`,
+    legendCurrent: 'текущая серия',
+    legendEarlier: 'получено раньше',
+    legendGoal: 'цель',
+    hint: 'Вехи идут каждые 5 чистых дней с последнего срыва. Достижение остаётся с вами навсегда, даже если потом был срыв, а в новой серии те же вехи можно пройти и отпраздновать снова.',
+    back: 'Назад',
+  },
+
   milestone: {
     title: 'Новая веха!',
+    /** Веха считается по чистым дням с последнего срыва, поэтому «без» здесь правда. */
     days: (n: number, habit: HabitId) => `${plural(n, DAY)} ${HABIT_WITHOUT_GENITIVE[habit]}`,
+    /** Ярусы по числу дней: вехи идут каждые 5 дней, поэтому текст меняется по рубежам месяца, трёх месяцев, полугода и года. */
     text: (n: number) =>
       n >= 365
         ? 'Целый год и больше. Это огромная работа — гордитесь собой.'
-        : n >= 30
-          ? 'Это уже устойчивая привычка. Так держать!'
-          : 'Каждый день — это шаг. Продолжайте в том же темпе.',
+        : n >= 180
+          ? 'Полгода и больше. Это уже образ жизни.'
+          : n >= 90
+            ? 'Три месяца и больше. Вы умеете держать слово, данное себе.'
+            : n >= 30
+              ? 'Месяц и больше. Это уже устойчивая привычка. Так держать!'
+              : 'Каждый день — это шаг. Продолжайте в том же темпе.',
     hint: 'Нажмите, чтобы продолжить',
   },
 
