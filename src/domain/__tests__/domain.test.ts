@@ -46,25 +46,29 @@ describe('вехи', () => {
     expect(nextMilestone(4)).toBe(5);
     expect(nextMilestone(5)).toBe(10);
     expect(nextMilestone(42)).toBe(45);
-    expect(nextMilestone(209)).toBe(210);
-    expect(nextMilestone(365)).toBe(370);
+    expect(nextMilestone(209)).toBe(270);
+    expect(nextMilestone(365)).toBe(545);
+    expect(nextMilestone(730)).toBe(1095);
+    expect(nextMilestone(1100)).toBe(1460);
   });
 
   it('достигнутые вехи', () => {
     expect(reachedMilestones(0)).toEqual([]);
     expect(reachedMilestones(4)).toEqual([]);
     expect(reachedMilestones(5)).toEqual([5]);
-    expect(reachedMilestones(23)).toEqual([5, 10, 15, 20]);
+    expect(reachedMilestones(23)).toEqual([5, 10, 14, 21]);
+    expect(reachedMilestones(365)).toEqual([5, 10, 14, 21, 30, 45, 60, 90, 120, 180, 270, 365]);
+    expect(reachedMilestones(1100).slice(-3)).toEqual([545, 730, 1095]);
   });
 
   it('поздравление один раз на веху, при пропуске — с самой большой', () => {
     const c = (celebratedSince: string | null, celebratedUpTo: number) => ({ celebratedSince, celebratedUpTo });
     expect(lastReachedMilestone(4)).toBe(0);
-    expect(lastReachedMilestone(23)).toBe(20);
+    expect(lastReachedMilestone(23)).toBe(21);
     expect(pendingMilestone(4, '2026-09-01', c(null, 0))).toBeNull();
-    expect(pendingMilestone(23, '2026-09-01', c(null, 0))).toBe(20);
-    expect(pendingMilestone(23, '2026-09-01', c('2026-09-01', 20))).toBeNull();
-    expect(pendingMilestone(25, '2026-09-01', c('2026-09-01', 20))).toBe(25);
+    expect(pendingMilestone(23, '2026-09-01', c(null, 0))).toBe(21);
+    expect(pendingMilestone(23, '2026-09-01', c('2026-09-01', 21))).toBeNull();
+    expect(pendingMilestone(30, '2026-09-01', c('2026-09-01', 21))).toBe(30);
     // Новая серия после срыва: прежние поздравления не считаются, веха 5 празднуется снова.
     expect(pendingMilestone(5, '2026-10-01', c('2026-09-01', 40))).toBe(5);
   });
@@ -75,8 +79,8 @@ describe('вехи', () => {
   });
 
   it('достижения: показанные вехи остаются после срыва, текущие добавляются', () => {
-    expect(achievedMilestones([5, 10, 15], 2)).toEqual([5, 10, 15]);
-    expect(achievedMilestones([5, 10], 17)).toEqual([5, 10, 15]);
+    expect(achievedMilestones([5, 10, 14], 2)).toEqual([5, 10, 14]);
+    expect(achievedMilestones([5, 10], 17)).toEqual([5, 10, 14]);
     expect(achievedMilestones([], 0)).toEqual([]);
     // Значения старой схемы и мусор игнорируются.
     expect(achievedMilestones([1, 3, 7, 0, -5], 5)).toEqual([5]);
@@ -96,6 +100,8 @@ describe('вехи', () => {
   it('старые вехи переводятся на новую схему без поздравления задним числом', () => {
     expect(migrateLegacyMilestones([1, 3, 7, 14, 30], 209)).toEqual(reachedMilestones(209));
     expect(migrateLegacyMilestones([1], 3)).toEqual([]);
+    // Схема «каждые 5 дней»: заработанное 40 означает пройденные 5, 10, 14, 21 и 30.
+    expect(migrateLegacyMilestones([5, 10, 15, 20, 25, 30, 35, 40], 2)).toEqual([5, 10, 14, 21, 30]);
     // Новая схема и пустой список не трогаются.
     expect(migrateLegacyMilestones([], 209)).toBeNull();
     expect(migrateLegacyMilestones([5, 10], 12)).toBeNull();

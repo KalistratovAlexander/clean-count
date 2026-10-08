@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { IconButton } from '@/components/buttons';
 import { CheckIcon, ChevronLeftIcon } from '@/components/icons';
 import { SegmentedControl } from '@/components/SegmentedControl';
-import { achievedMilestones, lastReachedMilestone, MILESTONE_STEP, tierMilestones } from '@/domain/milestones';
+import { achievedMilestones, lastReachedMilestone, milestonesUpTo, reachedMilestones, tierMilestones } from '@/domain/milestones';
 import { computeHabitStats } from '@/domain/stats';
 import { useClock } from '@/hooks/clock';
 import { useEnabledHabits } from '@/hooks/useEnabledHabits';
@@ -18,7 +18,7 @@ import { colors, fonts, habitColor, MAX_FONT_SCALE_NUMBERS, MAX_FONT_SCALE_TEXT,
 const BADGE_COLUMNS = 5;
 const BADGE_GAP = 8;
 
-/** Достижения привычки: сводка, главные рубежи и сетка всех вех по 5 дней. */
+/** Достижения привычки: сводка, главные рубежи и сетка вех текущей серии. */
 export default function AchievementsScreen() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
@@ -44,12 +44,11 @@ export default function AchievementsScreen() {
   const best = achieved[achieved.length - 1] ?? 0;
   // Вехи текущей серии закрашены, заработанные в прошлых сериях — с обводкой.
   const currentTop = lastReachedMilestone(stats.daysSinceRelapse);
-  const inStreak = currentTop / MILESTONE_STEP;
+  const inStreak = reachedMilestones(stats.daysSinceRelapse).length;
   const tiers = tierMilestones(best);
   // В сетке только текущая серия и ближайшая цель; вехи прошлых серий свёрнуты в одну строку,
   // иначе за годы сетка превращается в стену из сотен чисел.
-  const badges: number[] = [];
-  for (let m = MILESTONE_STEP; m <= stats.goal; m += MILESTONE_STEP) badges.push(m);
+  const badges = milestonesUpTo(stats.goal);
   const earlierCount = achieved.filter((m) => m > currentTop).length;
   // Ровная сетка: пять плиток в ряд одинаковой ширины независимо от числа цифр.
   const badgeWidth = Math.floor((width - spacing.screenX * 2 - BADGE_GAP * (BADGE_COLUMNS - 1)) / BADGE_COLUMNS);

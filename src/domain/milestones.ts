@@ -1,23 +1,43 @@
 import type { Habit, LocalDate } from './types';
 
-/** Шаг между вехами в днях. */
-export const MILESTONE_STEP = 5;
+const YEAR = 365;
 
-/** Ближайшая веха строго больше `days`: 5, 10, 15 и далее каждые 5 дней. */
-export function nextMilestone(days: number): number {
-  return (Math.floor(Math.max(0, days) / MILESTONE_STEP) + 1) * MILESTONE_STEP;
+/**
+ * Лестница вех по чистым дням с последнего срыва: сначала короткие шаги, чтобы поддержать
+ * в первые недели, потом по месяцам, полгода, год, полтора, два, дальше каждый год.
+ */
+export const MILESTONES = [5, 10, 14, 21, 30, 45, 60, 90, 120, 180, 270, 365, 545, 730] as const;
+const LAST_FIXED = MILESTONES[MILESTONES.length - 1]!;
+
+/** Входит ли число в лестницу вех. */
+export function isMilestone(m: number): boolean {
+  return (MILESTONES as readonly number[]).includes(m) || (m > LAST_FIXED && m % YEAR === 0);
 }
 
-/** Все вехи, которые уже достигнуты при `days` днях, по возрастанию. */
+/** Ближайшая веха строго больше `days`. */
+export function nextMilestone(days: number): number {
+  const d = Math.max(0, days);
+  const fixed = MILESTONES.find((m) => m > d);
+  if (fixed !== undefined) return fixed;
+  return (Math.floor(d / YEAR) + 1) * YEAR;
+}
+
+/** Все вехи, не превышающие `limit`, по возрастанию. */
+export function milestonesUpTo(limit: number): number[] {
+  const list: number[] = MILESTONES.filter((m) => m <= limit);
+  for (let m = LAST_FIXED + YEAR; m <= limit; m += YEAR) list.push(m);
+  return list;
+}
+
+/** Все вехи, которые уже достигнуты при `days` чистых днях, по возрастанию. */
 export function reachedMilestones(days: number): number[] {
-  const reached: number[] = [];
-  for (let m = MILESTONE_STEP; m <= days; m += MILESTONE_STEP) reached.push(m);
-  return reached;
+  return milestonesUpTo(Math.max(0, days));
 }
 
 /** Самая большая веха, достигнутая при `days` днях, или 0. */
 export function lastReachedMilestone(days: number): number {
-  return Math.floor(Math.max(0, days) / MILESTONE_STEP) * MILESTONE_STEP;
+  const reached = reachedMilestones(days);
+  return reached[reached.length - 1] ?? 0;
 }
 
 /**
@@ -37,13 +57,14 @@ export function pendingMilestone(
 }
 
 /**
- * До 8 октября 2026 вехи шли по списку 1, 3, 7, 14, 30, …. Такие записи узнаём по
- * значениям, не кратным шагу, и заменяем на вехи, уже достигнутые по чистым дням
- * с последнего срыва, чтобы не поздравлять задним числом. Возвращает null, если менять нечего.
+ * Записи вех из прежних схем (1, 3, 7, 14, 30, … или каждые 5 дней) узнаём по значениям вне
+ * лестницы и переводим на неё: заработанное значение означает, что все вехи до него пройдены.
+ * Плюс вехи, достигнутые текущей серией. Возвращает null, если менять нечего.
  */
 export function migrateLegacyMilestones(earned: readonly number[], daysSinceRelapse: number): number[] | null {
-  if (!earned.some((m) => m % MILESTONE_STEP !== 0)) return null;
-  return reachedMilestones(daysSinceRelapse);
+  if (!earned.some((m) => !isMilestone(m))) return null;
+  const top = Math.max(0, ...earned);
+  return achievedMilestones(milestonesUpTo(top), daysSinceRelapse);
 }
 
 /**
@@ -51,7 +72,7 @@ export function migrateLegacyMilestones(earned: readonly number[], daysSinceRela
  * плюс вехи, достигнутые текущими чистыми днями. По возрастанию, без повторов.
  */
 export function achievedMilestones(earned: readonly number[], daysSinceRelapse: number): number[] {
-  const valid = earned.filter((m) => m > 0 && m % MILESTONE_STEP === 0);
+  const valid = earned.filter(isMilestone);
   return Array.from(new Set([...valid, ...reachedMilestones(daysSinceRelapse)])).sort((a, b) => a - b);
 }
 
@@ -61,7 +82,7 @@ const BASE_TIERS = [30, 90, 180, 365] as const;
 /** Главные рубежи до первого ещё не достигнутого включительно (но не меньше четырёх базовых). */
 export function tierMilestones(maxAchieved: number): number[] {
   const tiers: number[] = [...BASE_TIERS];
-  while (tiers[tiers.length - 1]! <= maxAchieved) tiers.push(tiers[tiers.length - 1]! + 365);
+  while (tiers[tiers.length - 1]! <= maxAchieved) tiers.push(tiers[tiers.length - 1]! + YEAR);
   return tiers;
 }
 
