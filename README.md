@@ -58,7 +58,7 @@ npx expo run:android
 - Проверка релизной конфигурации на симуляторе без Metro: `npx expo run:ios --configuration Release`.
 - Bundle ID / package: `ru.kickerlover.cleancount`, версия и номер сборки — в `app.json` (`version`, `ios.buildNumber`).
 - Экспортный контроль: в `app.json` стоит `ios.config.usesNonExemptEncryption: false`, вопрос о шифровании в App Store Connect задаваться не будет.
-- Скриншоты для карточки в сторе (iPhone 6,7", 1290×2796): `store/screenshots/`.
+- Материалы для карточки в сторе: тексты в `store/listing.md`, политика конфиденциальности в `store/privacy-policy.md` (её адрес на GitHub указывается в App Store Connect), скриншоты iPhone 6,7" (1290×2796) в `store/screenshots/`.
 - Облачная сборка через EAS (`npx eas-cli@latest build --platform ios`) возможна, но не используется: нужен аккаунт Expo.
 
 ### Проверки
