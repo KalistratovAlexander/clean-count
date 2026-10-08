@@ -9,7 +9,7 @@
     "userInterfaceStyle": "light",
     "backgroundColor": "#FFF6E9",
     "ios": {
-      "bundleIdentifier": "app.cleancount",
+      "bundleIdentifier": "ru.kickerlover.cleancount",
       "supportsTablet": false,
       "infoPlist": {
         "CFBundleDevelopmentRegion": "ru",
@@ -20,10 +20,11 @@
       },
       "config": {
         "usesNonExemptEncryption": false
-      }
+      },
+      "buildNumber": "1"
     },
     "android": {
-      "package": "app.cleancount",
+      "package": "ru.kickerlover.cleancount",
       "adaptiveIcon": {
         "backgroundColor": "#FFF6E9",
         "foregroundImage": "./assets/android-icon-foreground.png",

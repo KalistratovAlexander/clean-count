@@ -226,7 +226,8 @@ describe('достижения', () => {
     expect(screen.getByLabelText('Год, 365 дней, ещё 323 дня')).toBeTruthy();
     expect(screen.getByLabelText('40 дней: достигнуто в текущей серии')).toBeTruthy();
     expect(screen.getByLabelText('45 дней: текущая цель')).toBeTruthy();
-    expect(screen.queryByLabelText('50 дней: впереди')).toBeNull();
+    expect(screen.queryByLabelText(/^50 дней/)).toBeNull();
+    expect(screen.queryByText(/в прошлых сериях/)).toBeNull();
   });
 
   it('достижения остаются после срыва', async () => {
@@ -237,7 +238,10 @@ describe('достижения', () => {
     expect(screen.getByText('8')).toBeTruthy();
     expect(screen.getByText('В текущей серии — 0 вех')).toBeTruthy();
     expect(screen.getByText('Следующая цель — 5 дней, ещё 5 дней')).toBeTruthy();
-    expect(screen.getByLabelText('5 дней: получено раньше')).toBeTruthy();
+    // В сетке только цель, прошлая серия свёрнута в строку.
+    expect(screen.getByLabelText('5 дней: текущая цель')).toBeTruthy();
+    expect(screen.queryByLabelText(/^10 дней/)).toBeNull();
+    expect(screen.getByText('Ещё 8 вех получено в прошлых сериях')).toBeTruthy();
     expect(screen.getByLabelText('Месяц, 30 дней, получено раньше')).toBeTruthy();
   });
 
