@@ -46,8 +46,11 @@ export default function AchievementsScreen() {
   const currentTop = lastReachedMilestone(stats.daysSinceRelapse);
   const inStreak = currentTop / MILESTONE_STEP;
   const tiers = tierMilestones(best);
+  // В сетке только текущая серия и ближайшая цель; вехи прошлых серий свёрнуты в одну строку,
+  // иначе за годы сетка превращается в стену из сотен чисел.
   const badges: number[] = [];
-  for (let m = MILESTONE_STEP; m <= Math.max(best, stats.goal); m += MILESTONE_STEP) badges.push(m);
+  for (let m = MILESTONE_STEP; m <= stats.goal; m += MILESTONE_STEP) badges.push(m);
+  const earlierCount = achieved.filter((m) => m > currentTop).length;
   // Ровная сетка: пять плиток в ряд одинаковой ширины независимо от числа цифр.
   const badgeWidth = Math.floor((width - spacing.screenX * 2 - BADGE_GAP * (BADGE_COLUMNS - 1)) / BADGE_COLUMNS);
 
@@ -149,35 +152,33 @@ export default function AchievementsScreen() {
       </Text>
       <View style={styles.badges}>
         {badges.map((m) => {
-          const state = m <= currentTop ? 'current' : achieved.includes(m) ? 'earlier' : m === stats.goal ? 'goal' : 'locked';
+          const state = m <= currentTop ? 'current' : 'goal';
           return (
             <View
               key={m}
               style={[
                 styles.badge,
                 { width: badgeWidth },
-                state === 'current' && { backgroundColor: color, borderColor: color },
-                state === 'earlier' && [styles.badgeOff, { borderColor: color }],
-                state === 'goal' && [styles.badgeOff, styles.badgeGoal],
-                state === 'locked' && styles.badgeOff,
+                state === 'current' ? { backgroundColor: color, borderColor: color } : [styles.badgeOff, styles.badgeGoal],
               ]}
               accessible
               accessibilityLabel={t.achievements.badgeA11y(m, state)}
             >
-              <Text
-                style={[styles.badgeText, state === 'current' ? styles.badgeTextOn : state === 'locked' ? styles.muted : { color }]}
-                maxFontSizeMultiplier={MAX_FONT_SCALE_NUMBERS}
-              >
+              <Text style={[styles.badgeText, state === 'current' ? styles.badgeTextOn : { color }]} maxFontSizeMultiplier={MAX_FONT_SCALE_NUMBERS}>
                 {m}
               </Text>
             </View>
           );
         })}
       </View>
+      {earlierCount > 0 && (
+        <Text style={styles.earlier} maxFontSizeMultiplier={MAX_FONT_SCALE_TEXT}>
+          {t.achievements.earlierCount(earlierCount)}
+        </Text>
+      )}
 
       <View style={styles.legend}>
         <LegendItem label={t.achievements.legendCurrent} fill={color} />
-        <LegendItem label={t.achievements.legendEarlier} border={color} />
         <LegendItem label={t.achievements.legendGoal} border={colors.textPrimary} dashed />
       </View>
 
@@ -234,6 +235,7 @@ const styles = StyleSheet.create({
   },
   badgeOff: { backgroundColor: colors.surface, borderColor: colors.cardBorder },
   badgeGoal: { borderColor: colors.textPrimary, borderStyle: 'dashed' },
+  earlier: { fontFamily: fonts.text500, fontSize: 14, color: colors.textSecondary, marginTop: -4 },
   legend: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 14, rowGap: 6 },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   legendSwatch: { width: 14, height: 14, borderRadius: 4, borderWidth: 2 },

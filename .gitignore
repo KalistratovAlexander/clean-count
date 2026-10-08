@@ -42,3 +42,6 @@ yarn-error.*
 
 # tests
 coverage/
+
+# iOS archive and export (scripts/archive-ios.sh)
+/build
