@@ -54,7 +54,7 @@ const alcohol: Habit = {
   quitAt: '2026-03-03T00:00:00+03:00',
   milestonesEarned: reachedMilestones(42),
   celebratedSince: '2026-08-17',
-  celebratedUpTo: 40,
+  celebratedUpTo: 30,
 };
 const smoking: Habit = {
   id: 'smoking',
@@ -62,7 +62,7 @@ const smoking: Habit = {
   quitAt: '2026-08-10T00:00:00+03:00',
   milestonesEarned: reachedMilestones(35),
   celebratedSince: '2026-08-24',
-  celebratedUpTo: 35,
+  celebratedUpTo: 30,
 };
 const relapses: Relapse[] = [
   { id: 'a', habitId: 'alcohol', date: '2026-04-10', createdAt: '2026-04-10T22:00:00+03:00', kind: 'strong', count: 1, note: null },
@@ -100,10 +100,10 @@ describe('главный экран', () => {
     expect(screen.getByLabelText('209 дней с начала, с 3 марта')).toBeTruthy();
     expect(screen.getByText('6 месяцев 25 дней')).toBeTruthy();
     expect(screen.getByText('с 3 марта', { includeHiddenElements: true })).toBeTruthy();
-    expect(screen.getByText('Цель: 45 дней')).toBeTruthy();
+    // Алкоголь: 42 дня → цель 45, ещё 3. Курение: 35 дней → тоже 45, ещё 10.
+    expect(screen.getAllByText('Цель: 45 дней')).toHaveLength(2);
     expect(screen.getByText('ещё 3')).toBeTruthy();
-    expect(screen.getByText('Цель: 40 дней')).toBeTruthy();
-    expect(screen.getByText('ещё 5')).toBeTruthy();
+    expect(screen.getByText('ещё 10')).toBeTruthy();
     // Плитки: чистых дней всего и чистых дней с последнего срыва (серия).
     expect(screen.getByLabelText('206 чистых дней всего')).toBeTruthy();
     expect(screen.getByLabelText('42 чистых дня с последнего срыва')).toBeTruthy();
@@ -121,7 +121,7 @@ describe('главный экран', () => {
     expect(screen.getAllByRole('tab')).toHaveLength(2);
     // Входы в достижения: кнопка в шапке и полоса цели.
     expect(screen.getByRole('button', { name: 'Достижения' })).toBeTruthy();
-    await fireEvent.press(screen.getByRole('button', { name: /Следующая цель 45 дней.*открыть достижения/ }));
+    await fireEvent.press(screen.getAllByRole('button', { name: /Следующая цель 45 дней.*открыть достижения/ })[0]!);
     expect(mockRouter.push).toHaveBeenCalledWith({ pathname: '/achievements', params: { habit: 'alcohol' } });
   });
 
@@ -187,25 +187,25 @@ describe('главный экран', () => {
     seed({ alcohol: { ...alcohol, milestonesEarned: [], celebratedSince: null, celebratedUpTo: 0 }, smoking });
     await renderScreen(<MainScreen />);
     expect(screen.getByText('Новая веха!')).toBeTruthy();
-    // 42 чистых дня с последнего срыва: последняя достигнутая веха — 40.
-    expect(screen.getByText('40')).toBeTruthy();
+    // 42 чистых дня с последнего срыва: последняя достигнутая веха — 30.
+    expect(screen.getByText('30')).toBeTruthy();
     expect(screen.getByText('дней без алкоголя')).toBeTruthy();
     await fireEvent.press(screen.getByRole('button', { name: /Новая веха!/ }));
     expect(repo.saveHabit).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'alcohol', celebratedSince: '2026-08-17', celebratedUpTo: 40, milestonesEarned: reachedMilestones(42) }),
+      expect.objectContaining({ id: 'alcohol', celebratedSince: '2026-08-17', celebratedUpTo: 30, milestonesEarned: reachedMilestones(42) }),
     );
     expect(screen.queryByText('Новая веха!')).toBeNull();
   });
 
   it('в новой серии после срыва те же вехи поздравляются снова', async () => {
     // Все вехи до 100 дней заработаны в прошлой серии (с 1 мая), текущая серия с 17 августа — 42 дня.
-    seed({ alcohol: { ...alcohol, milestonesEarned: reachedMilestones(100), celebratedSince: '2026-05-01', celebratedUpTo: 100 }, smoking });
+    seed({ alcohol: { ...alcohol, milestonesEarned: reachedMilestones(100), celebratedSince: '2026-05-01', celebratedUpTo: 90 }, smoking });
     await renderScreen(<MainScreen />);
     expect(screen.getByText('Новая веха!')).toBeTruthy();
-    expect(screen.getByText('40')).toBeTruthy();
+    expect(screen.getByText('30')).toBeTruthy();
     await fireEvent.press(screen.getByRole('button', { name: /Новая веха!/ }));
     expect(repo.saveHabit).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'alcohol', celebratedSince: '2026-08-17', celebratedUpTo: 40, milestonesEarned: reachedMilestones(100) }),
+      expect.objectContaining({ id: 'alcohol', celebratedSince: '2026-08-17', celebratedUpTo: 30, milestonesEarned: reachedMilestones(100) }),
     );
   });
 });
@@ -215,18 +215,17 @@ describe('достижения', () => {
     seed({ alcohol, smoking });
     mockParams = { habit: 'alcohol' };
     await renderScreen(<AchievementsScreen />);
-    // 42 чистых дня с последнего срыва: вехи 5…40 — восемь достижений.
-    expect(screen.getByText('8')).toBeTruthy();
+    // 42 чистых дня с последнего срыва: вехи 5, 10, 14, 21, 30 — пять достижений.
     expect(screen.getByText('достижений')).toBeTruthy();
-    expect(screen.getByText('Последнее — 40 дней без алкоголя')).toBeTruthy();
-    expect(screen.getByText('В текущей серии — 8 вех')).toBeTruthy();
+    expect(screen.getByText('Последнее — 30 дней без алкоголя')).toBeTruthy();
+    expect(screen.getByText('В текущей серии — 5 вех')).toBeTruthy();
     expect(screen.getByText('Следующая цель — 45 дней, ещё 3 дня')).toBeTruthy();
     expect(screen.getByLabelText('Месяц, 30 дней, достигнуто')).toBeTruthy();
     expect(screen.getByLabelText('Три месяца, 90 дней, ещё 48 дней')).toBeTruthy();
     expect(screen.getByLabelText('Год, 365 дней, ещё 323 дня')).toBeTruthy();
-    expect(screen.getByLabelText('40 дней: достигнуто в текущей серии')).toBeTruthy();
+    expect(screen.getByLabelText('30 дней: достигнуто в текущей серии')).toBeTruthy();
     expect(screen.getByLabelText('45 дней: текущая цель')).toBeTruthy();
-    expect(screen.queryByLabelText(/^50 дней/)).toBeNull();
+    expect(screen.queryByLabelText(/^60 дней/)).toBeNull();
     expect(screen.queryByText(/в прошлых сериях/)).toBeNull();
   });
 
@@ -235,13 +234,12 @@ describe('достижения', () => {
     seed({ alcohol, smoking }, [...relapses, relapsedToday]);
     mockParams = { habit: 'alcohol' };
     await renderScreen(<AchievementsScreen />);
-    expect(screen.getByText('8')).toBeTruthy();
     expect(screen.getByText('В текущей серии — 0 вех')).toBeTruthy();
     expect(screen.getByText('Следующая цель — 5 дней, ещё 5 дней')).toBeTruthy();
     // В сетке только цель, прошлая серия свёрнута в строку.
     expect(screen.getByLabelText('5 дней: текущая цель')).toBeTruthy();
     expect(screen.queryByLabelText(/^10 дней/)).toBeNull();
-    expect(screen.getByText('Ещё 8 вех получено в прошлых сериях')).toBeTruthy();
+    expect(screen.getByText('Ещё 5 вех получено в прошлых сериях')).toBeTruthy();
     expect(screen.getByLabelText('Месяц, 30 дней, получено раньше')).toBeTruthy();
   });
 
@@ -269,8 +267,8 @@ describe('загрузка данных', () => {
     await useAppStore.getState().load('2026-09-28');
     const state = useAppStore.getState();
     expect(state.status).toBe('ready');
-    expect(state.habits.alcohol).toMatchObject({ milestonesEarned: reachedMilestones(42), celebratedSince: '2026-08-17', celebratedUpTo: 40 });
-    expect(state.habits.smoking).toMatchObject({ milestonesEarned: reachedMilestones(35), celebratedSince: '2026-08-24', celebratedUpTo: 35 });
+    expect(state.habits.alcohol).toMatchObject({ milestonesEarned: reachedMilestones(42), celebratedSince: '2026-08-17', celebratedUpTo: 30 });
+    expect(state.habits.smoking).toMatchObject({ milestonesEarned: reachedMilestones(35), celebratedSince: '2026-08-24', celebratedUpTo: 30 });
     expect(repo.saveHabit).toHaveBeenCalledWith(expect.objectContaining({ id: 'alcohol', milestonesEarned: reachedMilestones(42) }));
     // Поздравления задним числом нет.
     await renderScreen(<MainScreen />);

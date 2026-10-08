@@ -3,7 +3,8 @@
 #
 # Перед запуском: войти в Xcode под учётной записью разработчика (Xcode → Settings → Accounts)
 # и узнать Team ID (developer.apple.com/account → Membership details). В App Store Connect должно
-# существовать приложение с bundle id из app.json (ios.bundleIdentifier).
+# существовать приложение с bundle id из app.json (ios.bundleIdentifier). Если в команде ещё нет
+# ни одного устройства, подключите iPhone кабелем — скрипт зарегистрирует его.
 #
 #   TEAM_ID=ABCDE12345 scripts/archive-ios.sh            # архив и .ipa в build/ios/export
 #   TEAM_ID=ABCDE12345 scripts/archive-ios.sh --upload   # то же и сразу загрузить в App Store Connect
@@ -24,16 +25,19 @@ if [[ ! -d ios ]]; then
   npx expo prebuild --platform ios --no-install
 fi
 echo "▸ pod install"
-(cd ios && pod install --silent)
+(cd ios && pod install --silent 2>/dev/null)
 
 WORKSPACE=$(ls -d ios/*.xcworkspace | head -1)
 SCHEME=$(basename "$WORKSPACE" .xcworkspace)
 ARCHIVE="$OUT/$SCHEME.xcarchive"
 
 echo "▸ Архив: $ARCHIVE"
+# Автоматическая подпись архива использует профиль разработки, а ему нужно хотя бы одно устройство
+# в команде. Поэтому подключите любой iPhone кабелем: флаг -allowProvisioningDeviceRegistration
+# зарегистрирует его сам. Для App Store сборка переподписывается на экспорте.
 xcodebuild -workspace "$WORKSPACE" -scheme "$SCHEME" -configuration Release \
   -destination 'generic/platform=iOS' -archivePath "$ARCHIVE" \
-  DEVELOPMENT_TEAM="$TEAM_ID" -allowProvisioningUpdates archive \
+  DEVELOPMENT_TEAM="$TEAM_ID" -allowProvisioningUpdates -allowProvisioningDeviceRegistration archive \
   | grep -E "error:|warning: .*(signing|provisioning)|ARCHIVE (SUCCEEDED|FAILED)" || true
 [[ -d "$ARCHIVE" ]] || { echo "Архив не создан, смотрите ошибки выше"; exit 1; }
 
