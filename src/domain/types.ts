@@ -50,10 +50,15 @@ export interface Relapse {
   note: string | null;
 }
 
+/** Языки интерфейса. Словари лежат в `src/i18n`. */
+export type Language = 'ru' | 'en';
+export const LANGUAGES: readonly Language[] = ['ru', 'en'];
+
 export interface Settings {
   onboarded: boolean;
   lastScreen: HabitId | null;
   excludeFromBackup: boolean;
+  language: Language;
 }
 
 export const RELAPSE_NOTE_MAX_LENGTH = 300;

@@ -9,6 +9,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { PickerHost } from '@/components/DatePicker';
 import { ClockProvider, readNow } from '@/hooks/clock';
+import { useLanguage } from '@/hooks/useLanguage';
 import { t } from '@/i18n';
 import { useAppStore } from '@/store/appStore';
 import { colors, fonts } from '@/theme';
@@ -20,6 +21,7 @@ export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts(fontAssets);
   const status = useAppStore((s) => s.status);
   const load = useAppStore((s) => s.load);
+  useLanguage();
 
   useEffect(() => {
     load(readNow().today);

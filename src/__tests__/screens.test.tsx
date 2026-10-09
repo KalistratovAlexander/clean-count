@@ -5,12 +5,14 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { reachedMilestones } from '@/domain/milestones';
 import type { Habit, Relapse } from '@/domain/types';
 import { ClockProvider } from '@/hooks/clock';
+import { setLanguage, t } from '@/i18n';
 import { useAppStore } from '@/store/appStore';
 
 import AchievementsScreen from '@/app/achievements';
 import CalendarScreen from '@/app/calendar';
 import MainScreen from '@/app/main';
 import OnboardingScreen from '@/app/onboarding';
+import SettingsScreen from '@/app/settings';
 
 jest.mock('@/db/repo', () => ({
   loadSnapshot: jest.fn(),
@@ -77,7 +79,7 @@ function seed(habits: { alcohol: Habit; smoking: Habit }, list: Relapse[] = rela
     status: 'ready',
     habits,
     relapses: list,
-    settings: { onboarded: true, lastScreen: 'alcohol', excludeFromBackup: false },
+    settings: { onboarded: true, lastScreen: 'alcohol', excludeFromBackup: false, language: 'ru' },
   });
 }
 
@@ -89,6 +91,7 @@ beforeEach(() => {
 
 afterEach(() => {
   jest.useRealTimers();
+  setLanguage('ru');
 });
 
 describe('главный экран', () => {
@@ -252,6 +255,47 @@ describe('достижения', () => {
   });
 });
 
+describe('язык интерфейса', () => {
+  it('переключатель в настройках меняет язык, запоминает выбор и перерисовывает экран', async () => {
+    seed({ alcohol, smoking });
+    await renderScreen(<SettingsScreen />);
+    expect(screen.getByText('Настройки')).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'English' })).toBeTruthy();
+
+    await fireEvent.press(screen.getByRole('tab', { name: 'English' }));
+    expect(useAppStore.getState().settings.language).toBe('en');
+    expect(repo.saveSetting).toHaveBeenCalledWith('language', 'en');
+    expect(screen.getByText('Settings')).toBeTruthy();
+    expect(screen.getByText('Reset all data')).toBeTruthy();
+
+    await fireEvent.press(screen.getByRole('tab', { name: 'Русский' }));
+    expect(screen.getByText('Настройки')).toBeTruthy();
+  });
+
+  it('главный экран на английском', async () => {
+    seed({ alcohol, smoking });
+    useAppStore.getState().setLanguage('en');
+    await renderScreen(<MainScreen />);
+    expect(screen.getByLabelText('209 days since start, since 3 March')).toBeTruthy();
+    expect(screen.getByText('6 months 25 days')).toBeTruthy();
+    expect(screen.getByLabelText('206 clean days in total')).toBeTruthy();
+    expect(screen.getByLabelText('42 clean days since the last relapse')).toBeTruthy();
+    expect(screen.getAllByText('Goal: 45 days')).toHaveLength(2);
+    expect(screen.getByText('I relapsed')).toBeTruthy();
+  });
+
+  it('сохранённый язык применяется при загрузке', async () => {
+    repo.loadSnapshot!.mockResolvedValueOnce({
+      habits: { alcohol, smoking },
+      relapses,
+      settings: { onboarded: true, lastScreen: 'alcohol', excludeFromBackup: false, language: 'en' },
+    });
+    await useAppStore.getState().load('2026-09-28');
+    expect(useAppStore.getState().settings.language).toBe('en');
+    expect(t.settings.title).toBe('Settings');
+  });
+});
+
 describe('загрузка данных', () => {
   const legacySnapshot = () => ({
     habits: {
@@ -259,7 +303,7 @@ describe('загрузка данных', () => {
       smoking: { ...smoking, milestonesEarned: [1, 3, 7, 14, 30], celebratedSince: null, celebratedUpTo: 0 },
     },
     relapses,
-    settings: { onboarded: true, lastScreen: 'alcohol', excludeFromBackup: false },
+    settings: { onboarded: true, lastScreen: 'alcohol', excludeFromBackup: false, language: 'ru' },
   });
 
   it('старые вехи по серии переводятся на вехи по общему счёту и сохраняются', async () => {
@@ -370,7 +414,7 @@ describe('первый запуск', () => {
         smoking: { id: 'smoking', enabled: false, quitAt: null, milestonesEarned: [], celebratedSince: null, celebratedUpTo: 0 },
       },
       relapses: [],
-      settings: { onboarded: false, lastScreen: null, excludeFromBackup: false },
+      settings: { onboarded: false, lastScreen: null, excludeFromBackup: false, language: 'ru' },
     });
     await renderScreen(<OnboardingScreen />);
 

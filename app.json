@@ -60,6 +60,10 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "locales": {
+      "ru": "./locales/ru.json",
+      "en": "./locales/en.json"
     }
   }
 }

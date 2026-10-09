@@ -16,6 +16,7 @@ import { computeHabitStats } from '@/domain/stats';
 import type { Habit } from '@/domain/types';
 import { useClock } from '@/hooks/clock';
 import { useEnabledHabits } from '@/hooks/useEnabledHabits';
+import { useLanguage } from '@/hooks/useLanguage';
 import { t } from '@/i18n';
 import { useAppStore } from '@/store/appStore';
 import { colors, fonts, MAX_FONT_SCALE_TEXT, spacing } from '@/theme';
@@ -30,6 +31,7 @@ export default function MainScreen() {
   const markCelebrated = useAppStore((s) => s.markCelebrated);
   const relapses = useAppStore((s) => s.relapses);
   const clock = useClock();
+  useLanguage();
 
   const initialIndex = Math.max(0, habits.findIndex((h) => h.id === lastScreen));
   const [index, setIndex] = useState(initialIndex);

@@ -25,6 +25,7 @@ import { zonedDate } from '@/domain/localDate';
 import type { HabitId, Relapse } from '@/domain/types';
 import { useClock } from '@/hooks/clock';
 import { useEnabledHabits } from '@/hooks/useEnabledHabits';
+import { useLanguage } from '@/hooks/useLanguage';
 import { t } from '@/i18n';
 import { formatMonthTitle } from '@/i18n/format';
 import { useAppStore } from '@/store/appStore';
@@ -39,6 +40,7 @@ export default function CalendarScreen() {
   const relapses = useAppStore((s) => s.relapses);
   const removeRelapse = useAppStore((s) => s.removeRelapse);
   const { today } = useClock();
+  useLanguage();
   const flow = useRelapseFlow(Math.max(insets.bottom, 16) + 8);
 
   const filters = useMemo<CalendarFilter[]>(
