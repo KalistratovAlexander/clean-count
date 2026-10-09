@@ -1,6 +1,7 @@
 import Constants from 'expo-constants';
 import { router } from 'expo-router';
 import { useState } from 'react';
+import { useSharedValue, withTiming } from 'react-native-reanimated';
 import { Alert, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -8,9 +9,11 @@ import { isBackupExclusionAvailable } from '../../modules/backup-exclusion';
 
 import { IconButton } from '@/components/buttons';
 import { pick } from '@/components/DatePicker';
+import { SegmentedControl } from '@/components/SegmentedControl';
 import { ChevronLeftIcon, ChevronRightIcon } from '@/components/icons';
 import { localDateTime, toZoned, zonedDate, zonedMinutes } from '@/domain/localDate';
-import { HABIT_IDS, type Habit, type HabitId } from '@/domain/types';
+import { HABIT_IDS, LANGUAGES, type Habit, type HabitId } from '@/domain/types';
+import { useLanguage } from '@/hooks/useLanguage';
 import { readNow } from '@/hooks/clock';
 import { t } from '@/i18n';
 import { formatFullDate, formatTime } from '@/i18n/format';
@@ -44,7 +47,17 @@ export default function SettingsScreen() {
   const setQuitAt = useAppStore((s) => s.setQuitAt);
   const setExcludeFromBackup = useAppStore((s) => s.setExcludeFromBackup);
   const resetAll = useAppStore((s) => s.resetAll);
+  const setLanguage = useAppStore((s) => s.setLanguage);
+  const language = useLanguage();
   const [busy, setBusy] = useState(false);
+  const languagePosition = useSharedValue(LANGUAGES.indexOf(language));
+
+  const selectLanguage = (i: number) => {
+    const next = LANGUAGES[i];
+    if (!next) return;
+    languagePosition.set(withTiming(i, { duration: 220 }));
+    setLanguage(next);
+  };
 
   const enabledCount = HABIT_IDS.filter((id) => habits[id].enabled && habits[id].quitAt).length;
 
@@ -169,6 +182,19 @@ export default function SettingsScreen() {
           </View>
         );
       })}
+
+      <Text style={styles.sectionTitle} accessibilityRole="header" maxFontSizeMultiplier={MAX_FONT_SCALE_TEXT}>
+        {t.settings.language}
+      </Text>
+      <View style={styles.card}>
+        <SegmentedControl
+          segments={LANGUAGES.map((l) => ({ key: l, label: t.settings.languages[l] }))}
+          position={languagePosition}
+          selectedIndex={LANGUAGES.indexOf(language)}
+          onSelect={selectLanguage}
+          accessibilityLabel={t.settings.language}
+        />
+      </View>
 
       <Text style={styles.sectionTitle} accessibilityRole="header" maxFontSizeMultiplier={MAX_FONT_SCALE_TEXT}>
         {t.settings.privacy}

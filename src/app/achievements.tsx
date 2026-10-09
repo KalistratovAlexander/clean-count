@@ -11,6 +11,7 @@ import { achievedMilestones, lastReachedMilestone, milestonesUpTo, reachedMilest
 import { computeHabitStats } from '@/domain/stats';
 import { useClock } from '@/hooks/clock';
 import { useEnabledHabits } from '@/hooks/useEnabledHabits';
+import { useLanguage } from '@/hooks/useLanguage';
 import { t } from '@/i18n';
 import { useAppStore } from '@/store/appStore';
 import { colors, fonts, habitColor, MAX_FONT_SCALE_NUMBERS, MAX_FONT_SCALE_TEXT, radii, spacing } from '@/theme';
@@ -26,6 +27,7 @@ export default function AchievementsScreen() {
   const habits = useEnabledHabits();
   const relapses = useAppStore((s) => s.relapses);
   const { today } = useClock();
+  useLanguage();
 
   const initialIndex = Math.max(0, habits.findIndex((h) => h.id === params.habit));
   const [index, setIndex] = useState(initialIndex);

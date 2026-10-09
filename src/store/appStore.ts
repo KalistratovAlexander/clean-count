@@ -6,7 +6,8 @@ import * as repo from '@/db/repo';
 import { achievedMilestones, migrateLegacyMilestones, reachedMilestones } from '@/domain/milestones';
 import { buildRelapse, type RelapseInput } from '@/domain/relapse';
 import { daysSinceLastRelapse, streakStartDate } from '@/domain/stats';
-import { emptyHabit, HABIT_IDS, type Habit, type HabitId, type LocalDate, type Relapse, type Settings, type ZonedDateTime } from '@/domain/types';
+import { emptyHabit, HABIT_IDS, type Habit, type HabitId, type Language, type LocalDate, type Relapse, type Settings, type ZonedDateTime } from '@/domain/types';
+import { setLanguage as applyLanguage, systemLanguage } from '@/i18n';
 
 type Status = 'loading' | 'ready' | 'error';
 
@@ -26,6 +27,8 @@ interface AppState {
   /** Поздравили с вехой `milestone` в серии, начавшейся `streakStart`; веха попадает в достижения. */
   markCelebrated(id: HabitId, streakStart: LocalDate, milestone: number): Promise<void>;
   setLastScreen(id: HabitId): void;
+  /** Переключает язык интерфейса и запоминает выбор. */
+  setLanguage(language: Language): void;
   setExcludeFromBackup(excluded: boolean): Promise<void>;
   resetAll(): Promise<void>;
 }
@@ -42,7 +45,7 @@ export const useAppStore = create<AppState>()((set, get) => {
     status: 'loading',
     habits: { alcohol: emptyHabit('alcohol'), smoking: emptyHabit('smoking') },
     relapses: [],
-    settings: { onboarded: false, lastScreen: null, excludeFromBackup: false },
+    settings: { onboarded: false, lastScreen: null, excludeFromBackup: false, language: systemLanguage() },
 
     async load(today) {
       try {
@@ -70,6 +73,7 @@ export const useAppStore = create<AppState>()((set, get) => {
           snapshot.habits[id] = next;
           await repo.saveHabit(next).catch(console.error);
         }
+        applyLanguage(snapshot.settings.language);
         set({
           ...snapshot,
           settings: { ...snapshot.settings, excludeFromBackup: database.isExcludedFromBackup() },
@@ -130,6 +134,13 @@ export const useAppStore = create<AppState>()((set, get) => {
       if (get().settings.lastScreen === id) return;
       set((s) => ({ settings: { ...s.settings, lastScreen: id } }));
       repo.saveSetting('lastScreen', id).catch(console.error);
+    },
+
+    setLanguage(language) {
+      if (get().settings.language === language) return;
+      applyLanguage(language);
+      set((s) => ({ settings: { ...s.settings, language } }));
+      repo.saveSetting('language', language).catch(console.error);
     },
 
     async setExcludeFromBackup(excluded) {

@@ -4,6 +4,7 @@ import Svg, { Polygon } from 'react-native-svg';
 
 import type { DayCell, MonthModel } from '@/domain/calendar';
 import type { LocalDate } from '@/domain/types';
+import { useLanguage } from '@/hooks/useLanguage';
 import { t } from '@/i18n';
 import { formatDayMonth } from '@/i18n/format';
 import { colors, fonts, radii } from '@/theme';
@@ -20,6 +21,7 @@ interface Props {
 }
 
 function MonthGridBase({ month, width, selected, today, onSelect }: Props) {
+  useLanguage();
   const cellWidth = Math.floor((width - CELL_GAP * 6) / 7);
   const cells: (DayCell | null)[] = [...Array<null>(month.leadingBlanks).fill(null), ...month.days];
   while (cells.length % 7) cells.push(null);

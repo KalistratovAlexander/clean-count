@@ -1,4 +1,5 @@
 import { emptyHabit, HABIT_IDS, type Habit, type HabitId, type Relapse, type RelapseKind, type Settings } from '@/domain/types';
+import { isLanguage, systemLanguage } from '@/i18n';
 
 import { getDatabase } from './database';
 
@@ -26,7 +27,7 @@ interface SettingRow {
   value: string;
 }
 
-const DEFAULT_SETTINGS: Settings = { onboarded: false, lastScreen: null, excludeFromBackup: false };
+const DEFAULT_SETTINGS: Settings = { onboarded: false, lastScreen: null, excludeFromBackup: false, language: 'ru' };
 
 function parseShown(value: string): number[] {
   try {
@@ -81,6 +82,8 @@ export async function loadSnapshot(): Promise<Snapshot> {
     onboarded: raw.onboarded === '1',
     lastScreen: raw.lastScreen === 'alcohol' || raw.lastScreen === 'smoking' ? raw.lastScreen : null,
     excludeFromBackup: DEFAULT_SETTINGS.excludeFromBackup,
+    // Язык: сохранённый выбор, иначе язык устройства.
+    language: isLanguage(raw.language) ? raw.language : systemLanguage(),
   };
 
   return { habits, relapses: relapseRows.map(toRelapse), settings };
@@ -122,7 +125,7 @@ export async function deleteRelapse(id: string): Promise<void> {
   await getDatabase().runAsync('DELETE FROM relapses WHERE id = ?', id);
 }
 
-export async function saveSetting(key: 'lastScreen', value: string): Promise<void> {
+export async function saveSetting(key: 'lastScreen' | 'language', value: string): Promise<void> {
   await getDatabase().runAsync('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', key, value);
 }
 
@@ -131,7 +134,7 @@ export async function resetAll(): Promise<void> {
   await db.withExclusiveTransactionAsync(async (tx) => {
     await tx.execAsync(`
       DELETE FROM relapses;
-      DELETE FROM settings;
+      DELETE FROM settings WHERE key <> 'language';
       UPDATE habits SET enabled = 0, quit_at = NULL, milestones_shown = '[]', celebrated_since = NULL, celebrated_up_to = 0;
     `);
   });

@@ -10,6 +10,7 @@ import { CheckIcon, GlassIcon, SmokingKindIcon } from '@/components/icons';
 import { localDateTime, toZoned } from '@/domain/localDate';
 import { HABIT_IDS, type HabitId, type LocalDate } from '@/domain/types';
 import { readNow, useClock } from '@/hooks/clock';
+import { useLanguage } from '@/hooks/useLanguage';
 import { t } from '@/i18n';
 import { formatFullDate, formatTime } from '@/i18n/format';
 import { useAppStore } from '@/store/appStore';
@@ -26,6 +27,7 @@ interface QuitDraft {
 export default function OnboardingScreen() {
   const insets = useSafeAreaInsets();
   const { today } = useClock();
+  useLanguage();
   const completeOnboarding = useAppStore((s) => s.completeOnboarding);
   const [step, setStep] = useState(0);
   const [selected, setSelected] = useState<HabitId[]>([]);

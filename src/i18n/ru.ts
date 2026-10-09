@@ -1,4 +1,4 @@
-import type { HabitId, RelapseKind } from '@/domain/types';
+import type { HabitId, Language, RelapseKind } from '@/domain/types';
 
 import { plural, type PluralForms } from './plural';
 
@@ -225,7 +225,7 @@ export const ru = {
     /** Веха считается по чистым дням с последнего срыва, поэтому «без» здесь правда. */
     days: (n: number, habit: HabitId) => `${plural(n, DAY)} ${HABIT_WITHOUT_GENITIVE[habit]}`,
     /** Ярусы по числу дней: текст меняется по рубежам месяца, трёх месяцев, полугода и года. */
-    text: (n: number) =>
+    text: (n: number): string =>
       n >= 365
         ? 'Целый год и больше. Это огромная работа — гордитесь собой.'
         : n >= 180
@@ -251,6 +251,9 @@ export const ru = {
     changeDateText: 'Все показатели будут пересчитаны. Срывы раньше новой даты перестанут учитываться.',
     change: 'Изменить',
     cancel: 'Отмена',
+    language: 'Язык',
+    /** Названия языков на самих языках, одинаковы в обоих словарях. */
+    languages: { ru: 'Русский', en: 'English' } satisfies Record<Language, string>,
     privacy: 'Данные',
     privacyText: 'Все данные хранятся только на этом устройстве и никуда не отправляются.',
     excludeBackup: 'Не включать в облачный бэкап',
