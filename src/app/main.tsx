@@ -7,10 +7,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { IconButton, PillButton } from '@/components/buttons';
 import { CounterCard, RelapsesCard, StatsCard } from '@/components/HabitCards';
+import { HabitTabs } from '@/components/HabitTabs';
 import { CalendarIcon, SettingsIcon, TrophyIcon } from '@/components/icons';
 import { MilestoneOverlay } from '@/components/MilestoneOverlay';
 import { useRelapseFlow } from '@/components/relapse/useRelapseFlow';
-import { SegmentedControl } from '@/components/SegmentedControl';
 import { pendingMilestone } from '@/domain/milestones';
 import { computeHabitStats } from '@/domain/stats';
 import type { Habit } from '@/domain/types';
@@ -18,6 +18,7 @@ import { useClock } from '@/hooks/clock';
 import { useEnabledHabits } from '@/hooks/useEnabledHabits';
 import { useLanguage } from '@/hooks/useLanguage';
 import { t } from '@/i18n';
+import { habitName } from '@/i18n/habits';
 import { useAppStore } from '@/store/appStore';
 import { colors, fonts, MAX_FONT_SCALE_TEXT, spacing } from '@/theme';
 
@@ -70,6 +71,16 @@ export default function MainScreen() {
   if (!current || !currentStats) return <Redirect href="/onboarding" />;
 
   const openAchievements = (id: Habit['id']) => router.push({ pathname: '/achievements', params: { habit: id } });
+  // До трёх привычек переключатель умещается в шапке рядом с кнопками, дальше ему нужна своя строка.
+  const tabsInHeader = habits.length > 1 && habits.length <= 3;
+  const tabs = habits.length > 1 && (
+    <HabitTabs
+      tabs={habits.map((h) => ({ key: h.id, label: habitName(h), emoji: h.emoji }))}
+      position={position}
+      selectedIndex={index}
+      onSelect={(i) => pager.current?.setPage(i)}
+    />
+  );
 
   const pages = habits.map((habit, i) => (
     <ScrollView
@@ -77,9 +88,9 @@ export default function MainScreen() {
       contentContainerStyle={[styles.page, { paddingBottom: BUTTON_HEIGHT + bottomInset + 24 }]}
       showsVerticalScrollIndicator={false}
     >
-      <CounterCard habitId={habit.id} stats={stats[i]!} today={clock.today} />
-      <StatsCard habitId={habit.id} stats={stats[i]!} onGoalPress={() => openAchievements(habit.id)} />
-      <RelapsesCard habitId={habit.id} stats={stats[i]!} />
+      <CounterCard habit={habit} stats={stats[i]!} today={clock.today} />
+      <StatsCard habit={habit} stats={stats[i]!} onGoalPress={() => openAchievements(habit.id)} />
+      <RelapsesCard habit={habit} stats={stats[i]!} />
     </ScrollView>
   ));
 
@@ -87,13 +98,8 @@ export default function MainScreen() {
     <View style={styles.root}>
       <View style={[styles.topBar, { paddingTop: insets.top + 12 }]}>
         <View style={styles.topLeft}>
-          {habits.length > 1 ? (
-            <SegmentedControl
-              segments={habits.map((h) => ({ key: h.id, label: t.habit[h.id] }))}
-              position={position}
-              selectedIndex={index}
-              onSelect={(i) => pager.current?.setPage(i)}
-            />
+          {tabsInHeader ? (
+            tabs
           ) : (
             <Text style={styles.appTitle} accessibilityRole="header" maxFontSizeMultiplier={MAX_FONT_SCALE_TEXT}>
               {t.appName}
@@ -110,6 +116,8 @@ export default function MainScreen() {
           <SettingsIcon color={colors.textPrimary} />
         </IconButton>
       </View>
+
+      {!tabsInHeader && tabs && <View style={styles.tabsRow}>{tabs}</View>}
 
       {habits.length > 1 ? (
         <PagerView
@@ -135,7 +143,7 @@ export default function MainScreen() {
       {flow.elements}
 
       <MilestoneOverlay
-        habitId={milestone != null ? current.id : null}
+        habit={milestone != null ? current : null}
         milestone={milestone}
         onClose={() => {
           if (milestone != null) markCelebrated(current.id, currentStats.streakStart, milestone).catch(console.error);
@@ -155,6 +163,7 @@ const styles = StyleSheet.create({
     paddingBottom: 6,
   },
   topLeft: { flex: 1, marginRight: 4 },
+  tabsRow: { paddingHorizontal: spacing.screenX, paddingTop: 4, paddingBottom: 2 },
   appTitle: { fontFamily: fonts.display700, fontSize: 20, color: colors.textPrimary },
   pager: { flex: 1 },
   // flexGrow: карточка срывов прижимается к низу страницы (marginTop: 'auto'), пока контент короче экрана.

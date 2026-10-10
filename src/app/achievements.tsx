@@ -5,16 +5,17 @@ import { useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { IconButton } from '@/components/buttons';
+import { HabitTabs } from '@/components/HabitTabs';
 import { CheckIcon, ChevronLeftIcon } from '@/components/icons';
-import { SegmentedControl } from '@/components/SegmentedControl';
 import { achievedMilestones, lastReachedMilestone, milestonesUpTo, reachedMilestones, tierMilestones } from '@/domain/milestones';
 import { computeHabitStats } from '@/domain/stats';
 import { useClock } from '@/hooks/clock';
 import { useEnabledHabits } from '@/hooks/useEnabledHabits';
 import { useLanguage } from '@/hooks/useLanguage';
 import { t } from '@/i18n';
+import { habitName } from '@/i18n/habits';
 import { useAppStore } from '@/store/appStore';
-import { colors, fonts, habitColor, MAX_FONT_SCALE_NUMBERS, MAX_FONT_SCALE_TEXT, radii, spacing } from '@/theme';
+import { colors, fonts, MAX_FONT_SCALE_NUMBERS, MAX_FONT_SCALE_TEXT, radii, spacing } from '@/theme';
 
 const BADGE_COLUMNS = 5;
 const BADGE_GAP = 8;
@@ -42,7 +43,7 @@ export default function AchievementsScreen() {
 
   if (!habit || !stats) return <Redirect href="/main" />;
 
-  const color = habitColor[habit.id];
+  const color = habit.color;
   const best = achieved[achieved.length - 1] ?? 0;
   // Вехи текущей серии закрашены, заработанные в прошлых сериях — с обводкой.
   const currentTop = lastReachedMilestone(stats.daysSinceRelapse);
@@ -75,8 +76,8 @@ export default function AchievementsScreen() {
       </View>
 
       {habits.length > 1 && (
-        <SegmentedControl
-          segments={habits.map((h) => ({ key: h.id, label: t.habit[h.id] }))}
+        <HabitTabs
+          tabs={habits.map((h) => ({ key: h.id, label: habitName(h), emoji: h.emoji }))}
           position={position}
           selectedIndex={index}
           onSelect={select}
@@ -92,7 +93,7 @@ export default function AchievementsScreen() {
         </Text>
         {best > 0 && (
           <Text style={styles.summaryText} maxFontSizeMultiplier={MAX_FONT_SCALE_TEXT}>
-            {t.achievements.last(best, habit.id)}
+            {t.achievements.last(best, habit)}
           </Text>
         )}
         {achieved.length > 0 && (

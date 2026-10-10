@@ -3,19 +3,19 @@ import { useEffect } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeIn, ZoomIn } from 'react-native-reanimated';
 
-import type { HabitId } from '@/domain/types';
+import type { Habit } from '@/domain/types';
 import { t } from '@/i18n';
-import { colors, fonts, habitColor, MAX_FONT_SCALE_TEXT } from '@/theme';
+import { colors, fonts, MAX_FONT_SCALE_TEXT } from '@/theme';
 
 interface Props {
-  habitId: HabitId | null;
+  habit: Habit | null;
   milestone: number | null;
   onClose: () => void;
 }
 
 /** Полноэкранное поздравление с вехой; закрывается тапом в любом месте. */
-export function MilestoneOverlay({ habitId, milestone, onClose }: Props) {
-  const visible = !!habitId && milestone != null;
+export function MilestoneOverlay({ habit, milestone, onClose }: Props) {
+  const visible = !!habit && milestone != null;
 
   useEffect(() => {
     if (visible) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
@@ -25,10 +25,10 @@ export function MilestoneOverlay({ habitId, milestone, onClose }: Props) {
     <Modal visible={visible} animationType="fade" statusBarTranslucent navigationBarTranslucent onRequestClose={onClose}>
       {visible && (
         <Pressable
-          style={[styles.root, { backgroundColor: habitColor[habitId] }]}
+          style={[styles.root, { backgroundColor: habit.color }]}
           onPress={onClose}
           accessibilityRole="button"
-          accessibilityLabel={`${t.milestone.title} ${milestone} ${t.milestone.days(milestone, habitId)}. ${t.milestone.hint}`}
+          accessibilityLabel={`${t.milestone.title} ${milestone} ${t.milestone.days(milestone, habit)}. ${t.milestone.hint}`}
         >
           <Decor />
           <Animated.View entering={FadeIn.duration(300)} style={styles.content}>
@@ -45,7 +45,7 @@ export function MilestoneOverlay({ habitId, milestone, onClose }: Props) {
               {milestone}
             </Animated.Text>
             <Text style={styles.days} maxFontSizeMultiplier={MAX_FONT_SCALE_TEXT}>
-              {t.milestone.days(milestone, habitId)}
+              {t.milestone.days(milestone, habit)}
             </Text>
             <Text style={styles.text} maxFontSizeMultiplier={MAX_FONT_SCALE_TEXT}>
               {t.milestone.text(milestone)}

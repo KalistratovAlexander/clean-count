@@ -2,22 +2,24 @@ import * as Haptics from 'expo-haptics';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { DayCell } from '@/domain/calendar';
-import type { LocalDate, Relapse } from '@/domain/types';
+import type { Habit, LocalDate, Relapse } from '@/domain/types';
 import { t } from '@/i18n';
 import { formatDayWithWeekday } from '@/i18n/format';
-import { colors, fonts, habitColor, HIT, MAX_FONT_SCALE_TEXT, radii } from '@/theme';
+import { habitName, kindLabel } from '@/i18n/habits';
+import { colors, fonts, HIT, MAX_FONT_SCALE_TEXT, radii } from '@/theme';
 
 import { PlusIcon } from '../icons';
 
 interface Props {
   cell: DayCell | null;
+  habits: readonly Habit[];
   today: LocalDate;
   canAdd: boolean;
   onAdd: () => void;
   onDelete: (relapse: Relapse) => void;
 }
 
-export function DayDetails({ cell, today, canAdd, onAdd, onDelete }: Props) {
+export function DayDetails({ cell, habits, today, canAdd, onAdd, onDelete }: Props) {
   if (!cell) {
     return (
       <View style={styles.card}>
@@ -54,7 +56,9 @@ export function DayDetails({ cell, today, canAdd, onAdd, onDelete }: Props) {
         </Text>
       ) : (
         cell.relapses.map((r) => {
-          const label = t.calendar.relapseLabel(t.habit[r.habitId], t.kind[r.kind], r.count);
+          const habit = habits.find((h) => h.id === r.habitId);
+          if (!habit) return null;
+          const label = t.calendar.relapseLabel(habitName(habit), kindLabel(r.kind, habit), r.count);
           return (
             <Pressable
               key={r.id}
@@ -67,7 +71,7 @@ export function DayDetails({ cell, today, canAdd, onAdd, onDelete }: Props) {
               onAccessibilityAction={(e) => e.nativeEvent.actionName === 'longpress' && confirmDelete(r)}
               style={({ pressed }) => [styles.relapse, pressed && styles.pressed]}
             >
-              <View style={[styles.chip, { backgroundColor: habitColor[r.habitId] }]}>
+              <View style={[styles.chip, { backgroundColor: habit.color }]}>
                 <Text style={styles.chipText} maxFontSizeMultiplier={MAX_FONT_SCALE_TEXT}>
                   {label}
                 </Text>

@@ -17,19 +17,20 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { IconButton } from '@/components/buttons';
 import { DayDetails } from '@/components/calendar/DayDetails';
 import { MonthGrid } from '@/components/calendar/MonthGrid';
+import { HabitTabs } from '@/components/HabitTabs';
 import { ChevronLeftIcon, ChevronRightIcon } from '@/components/icons';
 import { useRelapseFlow } from '@/components/relapse/useRelapseFlow';
-import { SegmentedControl } from '@/components/SegmentedControl';
 import { buildMonth, monthRange, sameMonth, yearMonthOf, type CalendarFilter, type YearMonth } from '@/domain/calendar';
 import { zonedDate } from '@/domain/localDate';
-import type { HabitId, Relapse } from '@/domain/types';
+import type { Habit, Relapse } from '@/domain/types';
 import { useClock } from '@/hooks/clock';
 import { useEnabledHabits } from '@/hooks/useEnabledHabits';
 import { useLanguage } from '@/hooks/useLanguage';
 import { t } from '@/i18n';
 import { formatMonthTitle } from '@/i18n/format';
+import { habitName } from '@/i18n/habits';
 import { useAppStore } from '@/store/appStore';
-import { colors, fonts, habitColor, MAX_FONT_SCALE_NUMBERS, MAX_FONT_SCALE_TEXT, radii, spacing } from '@/theme';
+import { colors, fonts, MAX_FONT_SCALE_NUMBERS, MAX_FONT_SCALE_TEXT, radii, spacing } from '@/theme';
 
 export default function CalendarScreen() {
   const insets = useSafeAreaInsets();
@@ -51,8 +52,7 @@ export default function CalendarScreen() {
   const [filter, setFilter] = useState<CalendarFilter>(initialFilter);
   const filterPosition = useSharedValue(Math.max(0, filters.indexOf(initialFilter)));
 
-  const habitList = useMemo(() => Object.values(allHabits), [allHabits]);
-  const months = useMemo(() => monthRange(habitList, today), [habitList, today]);
+  const months = useMemo(() => monthRange(allHabits, today), [allHabits, today]);
   const [monthIndex, setMonthIndex] = useState(months.length - 1);
   const [selected, setSelected] = useState<string | null>(today);
   const list = useRef<FlatList<YearMonth>>(null);
@@ -63,8 +63,8 @@ export default function CalendarScreen() {
   const currentMonth = months[safeIndex]!;
 
   const model = useMemo(
-    () => buildMonth(currentMonth, habitList, relapses, filter, today),
-    [currentMonth, habitList, relapses, filter, today],
+    () => buildMonth(currentMonth, allHabits, relapses, filter, today),
+    [currentMonth, allHabits, relapses, filter, today],
   );
   const selectedCell = selected ? (model.days.find((d) => d.date === selected) ?? null) : null;
 
@@ -92,20 +92,19 @@ export default function CalendarScreen() {
   };
 
   // Какие привычки можно записать на выбранный день: видимые в фильтре и с датой отказа не позже дня.
-  const addable: HabitId[] = selectedCell && selectedCell.state !== 'inactive'
-    ? habits
-        .filter((h) => (filter === 'all' || filter === h.id) && zonedDate(h.quitAt!) <= selectedCell.date)
-        .map((h) => h.id)
-    : [];
+  const addable: Habit[] =
+    selectedCell && selectedCell.state !== 'inactive'
+      ? habits.filter((h) => (filter === 'all' || filter === h.id) && zonedDate(h.quitAt!) <= selectedCell.date)
+      : [];
 
   const addRelapse = () => {
     if (!selectedCell) return;
     if (addable.length === 1) {
-      flow.open(addable[0]!, selectedCell.date);
+      flow.open(addable[0]!.id, selectedCell.date);
       return;
     }
     Alert.alert(t.calendar.chooseHabit, undefined, [
-      ...addable.map((id) => ({ text: t.habit[id], onPress: () => flow.open(id, selectedCell.date) })),
+      ...addable.map((h) => ({ text: habitName(h), onPress: () => flow.open(h.id, selectedCell.date) })),
       { text: t.calendar.cancel, style: 'cancel' as const },
     ]);
   };
@@ -133,8 +132,11 @@ export default function CalendarScreen() {
 
         {filters.length > 1 && (
           <View style={styles.padded}>
-            <SegmentedControl
-              segments={filters.map((f) => ({ key: f, label: f === 'all' ? t.calendar.all : t.habit[f] }))}
+            <HabitTabs
+              tabs={filters.map((f) => {
+                const habit = habits.find((h) => h.id === f);
+                return { key: f, label: habit ? habitName(habit) : t.calendar.all, emoji: habit?.emoji };
+              })}
               position={filterPosition}
               selectedIndex={filters.indexOf(filter)}
               onSelect={selectFilter}
@@ -177,7 +179,8 @@ export default function CalendarScreen() {
           renderItem={({ item }) => (
             <View style={[styles.monthPage, { width: pageWidth }]}>
               <MonthGrid
-                month={sameMonth(item, currentMonth) ? model : buildMonth(item, habitList, relapses, filter, today)}
+                month={sameMonth(item, currentMonth) ? model : buildMonth(item, allHabits, relapses, filter, today)}
+                habits={allHabits}
                 width={gridWidth}
                 selected={selected}
                 today={today}
@@ -189,7 +192,7 @@ export default function CalendarScreen() {
 
         <View style={[styles.legend, styles.padded]} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
           {visibleHabits.map((h) => (
-            <LegendItem key={h.id} color={habitColor[h.id]} label={t.habit[h.id]} />
+            <LegendItem key={h.id} color={h.color} label={habitName(h)} />
           ))}
           <LegendItem color={colors.surface} border label={t.calendar.legendClean} />
         </View>
@@ -197,6 +200,7 @@ export default function CalendarScreen() {
         <View style={styles.padded}>
           <DayDetails
             cell={selectedCell}
+            habits={allHabits}
             today={today}
             canAdd={addable.length > 0}
             onAdd={addRelapse}
@@ -206,12 +210,12 @@ export default function CalendarScreen() {
 
         <View style={[styles.totals, styles.padded]}>
           {visibleHabits.map((h) => (
-            <View key={h.id} style={styles.total} accessible accessibilityLabel={t.calendar.monthTotalA11y(model.totals[h.id], h.id)}>
+            <View key={h.id} style={styles.total} accessible accessibilityLabel={t.calendar.monthTotalA11y(model.totals[h.id] ?? 0, h)}>
               <Text style={styles.totalValue} maxFontSizeMultiplier={MAX_FONT_SCALE_NUMBERS}>
-                {model.totals[h.id]}
+                {model.totals[h.id] ?? 0}
               </Text>
               <Text style={styles.totalLabel} maxFontSizeMultiplier={MAX_FONT_SCALE_TEXT}>
-                {t.calendar.monthTotal(model.totals[h.id], h.id)}
+                {t.calendar.monthTotal(model.totals[h.id] ?? 0, h)}
               </Text>
             </View>
           ))}
@@ -248,8 +252,9 @@ const styles = StyleSheet.create({
   legendSwatch: { width: 12, height: 12, borderRadius: 4 },
   legendBorder: { borderWidth: 1, borderColor: colors.border },
   legendText: { fontFamily: fonts.text400, fontSize: 12, color: colors.textSecondary },
-  totals: { flexDirection: 'row', gap: 10 },
-  total: { flex: 1, backgroundColor: colors.relapseBg, borderRadius: radii.tile, paddingVertical: 12, paddingHorizontal: 14, gap: 2 },
+  totals: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  // До шести плиток: по две в ряд, одиночная растягивается на всю ширину.
+  total: { flexGrow: 1, flexBasis: '45%', backgroundColor: colors.relapseBg, borderRadius: radii.tile, paddingVertical: 12, paddingHorizontal: 14, gap: 2 },
   totalValue: { fontFamily: fonts.display700, fontSize: 22, color: colors.textPrimary },
   totalLabel: { fontFamily: fonts.text400, fontSize: 12, color: colors.textSecondary },
 });

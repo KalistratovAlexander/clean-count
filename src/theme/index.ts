@@ -1,6 +1,6 @@
 import type { ViewStyle } from 'react-native';
 
-import type { HabitId } from '@/domain/types';
+import { PRESET_COLORS, type PresetId } from '@/domain/types';
 
 /** Токены стиля «Энергия» (ТЗ, раздел 7, и макеты). */
 export const colors = {
@@ -26,10 +26,13 @@ export const colors = {
   danger: '#B42318',
 } as const;
 
-export const habitColor: Record<HabitId, string> = {
-  alcohol: colors.alcohol,
-  smoking: colors.smoking,
-};
+/** Цвета встроенных привычек; цвет любой привычки хранится в `habit.color`. */
+export const habitColor: Record<PresetId, string> = PRESET_COLORS;
+
+/** Палитра для своих привычек: отличима от встроенных и от акцентов интерфейса. */
+export const CUSTOM_HABIT_COLORS: readonly string[] = [
+  '#6D28D9', '#BE185D', '#B45309', '#0E7490', '#15803D', '#B91C1C', '#4338CA', '#475569',
+];
 
 /** Имена шрифтов после загрузки через expo-font (см. src/theme/fonts.ts). */
 export const fonts = {
