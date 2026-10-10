@@ -1,12 +1,12 @@
 import * as Haptics from 'expo-haptics';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, Text, View } from 'react-native';
 
 import type { DayCell } from '@/domain/calendar';
 import type { Habit, LocalDate, Relapse } from '@/domain/types';
 import { t } from '@/i18n';
 import { formatDayWithWeekday } from '@/i18n/format';
 import { habitName, kindLabel } from '@/i18n/habits';
-import { colors, fonts, HIT, MAX_FONT_SCALE_TEXT, radii } from '@/theme';
+import { colors, createStyles, fonts, HIT, MAX_FONT_SCALE_TEXT, radii } from '@/theme';
 
 import { PlusIcon } from '../icons';
 
@@ -98,7 +98,7 @@ export function DayDetails({ cell, habits, today, canAdd, onAdd, onDelete }: Pro
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createStyles({
   card: { backgroundColor: colors.surface, borderRadius: radii.card, paddingVertical: 16, paddingHorizontal: 18, gap: 10 },
   title: { fontFamily: fonts.text700, fontSize: 15, color: colors.textPrimary },
   muted: { fontFamily: fonts.text400, fontSize: 14, color: colors.textSecondary },

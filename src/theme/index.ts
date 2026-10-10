@@ -2,6 +2,8 @@ import type { ViewStyle } from 'react-native';
 
 import { PRESET_COLORS, type PresetId } from '@/domain/types';
 
+export { BASE_WIDTH, createStyles, s, SCALE } from './scale';
+
 /** Токены стиля «Энергия» (ТЗ, раздел 7, и макеты). */
 export const colors = {
   background: '#FFF6E9',
@@ -44,6 +46,10 @@ export const fonts = {
   text700: 'GolosText_700Bold',
 } as const;
 
+/**
+ * Радиусы, отступы и зоны нажатия заданы для iPhone 14 Pro Max (430 pt). Внутри `createStyles`
+ * они масштабируются автоматически; вне стилей оборачивай их в `s()`.
+ */
 export const radii = {
   counter: 32,
   sheet: 32,

@@ -2,7 +2,7 @@ import Constants from 'expo-constants';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { useSharedValue, withTiming } from 'react-native-reanimated';
-import { Alert, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, Switch, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { isBackupExclusionAvailable } from '../../modules/backup-exclusion';
@@ -22,7 +22,7 @@ import { t } from '@/i18n';
 import { formatFullDate, formatTime } from '@/i18n/format';
 import { habitName } from '@/i18n/habits';
 import { useAppStore } from '@/store/appStore';
-import { colors, fieldRow, fonts, HIT, MAX_FONT_SCALE_TEXT, radii, spacing } from '@/theme';
+import { colors, createStyles, fieldRow, fonts, HIT, MAX_FONT_SCALE_TEXT, radii, s, spacing } from '@/theme';
 
 function confirm(title: string, message: string, action: string, destructive = false): Promise<boolean> {
   return new Promise((resolve) => {
@@ -182,7 +182,7 @@ export default function SettingsScreen() {
   return (
     <ScrollView
       style={styles.root}
-      contentContainerStyle={[styles.content, { paddingTop: insets.top + 12, paddingBottom: insets.bottom + 28 }]}
+      contentContainerStyle={[styles.content, { paddingTop: insets.top + s(12), paddingBottom: insets.bottom + s(28) }]}
     >
       <View style={styles.header}>
         <IconButton label={t.settings.back} onPress={() => router.back()}>
@@ -335,7 +335,7 @@ function SettingRow({ label, value, onPress }: { label: string; value: string; o
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createStyles({
   root: { flex: 1, backgroundColor: colors.background },
   content: { paddingHorizontal: spacing.screenX, gap: 14 },
   header: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 6 },

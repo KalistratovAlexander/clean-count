@@ -1,6 +1,6 @@
 import * as Haptics from 'expo-haptics';
 import { useMemo, useState, type ReactNode } from 'react';
-import { Alert, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Platform, Pressable, Text, TextInput, View } from 'react-native';
 
 import { habitCountsAmount, habitKinds } from '@/domain/habits';
 import { addDays } from '@/domain/localDate';
@@ -21,7 +21,7 @@ import { t } from '@/i18n';
 import { formatShortDate } from '@/i18n/format';
 import { kindLabel } from '@/i18n/habits';
 import { useAppStore } from '@/store/appStore';
-import { colors, fonts, HIT, MAX_FONT_SCALE_TEXT, radii } from '@/theme';
+import { colors, createStyles, fonts, HIT, MAX_FONT_SCALE_TEXT, radii } from '@/theme';
 
 import { BottomSheet } from '../BottomSheet';
 import { PillButton } from '../buttons';
@@ -347,7 +347,7 @@ function StepButton({ label, symbol, disabled, onPress }: { label: string; symbo
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createStyles({
   header: { gap: 8 },
   title: { fontFamily: fonts.display700, fontSize: 22, color: colors.textPrimary },
   phrase: { fontFamily: fonts.text400, fontSize: 15, lineHeight: 22, color: colors.textSecondary },

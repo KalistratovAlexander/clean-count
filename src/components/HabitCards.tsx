@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Pressable, Text, useWindowDimensions, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -16,7 +16,7 @@ import type { Habit, LocalDate } from '@/domain/types';
 import { t } from '@/i18n';
 import { habitLabel, kindLabel } from '@/i18n/habits';
 import { formatDayMonth } from '@/i18n/format';
-import { colors, fonts, MAX_FONT_SCALE_NUMBERS, MAX_FONT_SCALE_TEXT, radii } from '@/theme';
+import { colors, createStyles, fonts, MAX_FONT_SCALE_NUMBERS, MAX_FONT_SCALE_TEXT, radii } from '@/theme';
 
 interface CardProps {
   habit: Habit;
@@ -183,7 +183,7 @@ export function RelapsesCard({ habit, stats }: CardProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createStyles({
   /** Общая форма большой карточки и плитки чистых дней: одинаковые скругление и поля. */
   card: { borderRadius: radii.counter, paddingHorizontal: 24 },
   counter: { paddingTop: 28, paddingBottom: 26, gap: 14 },

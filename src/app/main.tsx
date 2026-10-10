@@ -1,6 +1,6 @@
 import { Redirect, router } from 'expo-router';
 import { useCallback, useMemo, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import PagerView from 'react-native-pager-view';
 import { useSharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -20,9 +20,9 @@ import { useLanguage } from '@/hooks/useLanguage';
 import { t } from '@/i18n';
 import { habitName } from '@/i18n/habits';
 import { useAppStore } from '@/store/appStore';
-import { colors, fonts, MAX_FONT_SCALE_TEXT, spacing } from '@/theme';
+import { colors, createStyles, fonts, MAX_FONT_SCALE_TEXT, s, spacing } from '@/theme';
 
-const BUTTON_HEIGHT = 60;
+const BUTTON_HEIGHT = s(60);
 
 export default function MainScreen() {
   const insets = useSafeAreaInsets();
@@ -48,8 +48,8 @@ export default function MainScreen() {
     position.set(initialIndex);
   }
 
-  const bottomInset = Math.max(insets.bottom, 16) + 8;
-  const flow = useRelapseFlow(bottomInset + BUTTON_HEIGHT + 12);
+  const bottomInset = Math.max(insets.bottom, s(16)) + s(8);
+  const flow = useRelapseFlow(bottomInset + BUTTON_HEIGHT + s(12));
 
   const current: Habit | undefined = habits[Math.min(index, habits.length - 1)];
   // Показатели зависят только от календарной даты, поэтому пересчитываются раз в сутки и при изменении записей.
@@ -85,7 +85,7 @@ export default function MainScreen() {
   const pages = habits.map((habit, i) => (
     <ScrollView
       key={habit.id}
-      contentContainerStyle={[styles.page, { paddingBottom: BUTTON_HEIGHT + bottomInset + 24 }]}
+      contentContainerStyle={[styles.page, { paddingBottom: BUTTON_HEIGHT + bottomInset + s(24) }]}
       showsVerticalScrollIndicator={false}
     >
       <CounterCard habit={habit} stats={stats[i]!} today={clock.today} />
@@ -96,7 +96,7 @@ export default function MainScreen() {
 
   return (
     <View style={styles.root}>
-      <View style={[styles.topBar, { paddingTop: insets.top + 12 }]}>
+      <View style={[styles.topBar, { paddingTop: insets.top + s(12) }]}>
         <View style={styles.topLeft}>
           {tabsInHeader ? (
             tabs
@@ -153,7 +153,7 @@ export default function MainScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createStyles({
   root: { flex: 1, backgroundColor: colors.background },
   topBar: {
     flexDirection: 'row',

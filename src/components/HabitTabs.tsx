@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
+import { Pressable, ScrollView, Text, View, type LayoutChangeEvent } from 'react-native';
 import type { SharedValue } from 'react-native-reanimated';
 
-import { colors, fonts, HIT, MAX_FONT_SCALE_TEXT, radii } from '@/theme';
+import { colors, createStyles, fonts, HIT, MAX_FONT_SCALE_TEXT, radii } from '@/theme';
 
 import { SegmentedControl, type Segment } from './SegmentedControl';
 
@@ -87,7 +87,7 @@ export function HabitTabs({ tabs, position, selectedIndex, onSelect, fontSize, a
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createStyles({
   chips: { flexDirection: 'row', gap: 8, paddingVertical: 2 },
   chip: {
     flexDirection: 'row',

@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, Text, TextInput, View } from 'react-native';
 
 import { firstGrapheme, validateCustomHabit, type CustomHabitError, type CustomHabitInput } from '@/domain/habits';
 import { HABIT_NAME_MAX_LENGTH, HABIT_UNITS, type Habit, type HabitUnit } from '@/domain/types';
 import { t } from '@/i18n';
-import { colors, CUSTOM_HABIT_COLORS, fonts, HIT, MAX_FONT_SCALE_TEXT, radii } from '@/theme';
+import { colors, createStyles, CUSTOM_HABIT_COLORS, fonts, HIT, MAX_FONT_SCALE_TEXT, radii } from '@/theme';
 
 import { BottomSheet } from '../BottomSheet';
 import { PillButton } from '../buttons';
@@ -181,7 +181,7 @@ function HabitForm({ initial, onClose, onSubmit, onDelete }: Omit<Props, 'visibl
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createStyles({
   title: { fontFamily: fonts.display700, fontSize: 22, color: colors.textPrimary },
   row: { flexDirection: 'row', gap: 12 },
   emojiBox: { gap: 8, width: 84 },

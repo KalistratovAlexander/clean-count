@@ -8,7 +8,7 @@ import { useLanguage } from '@/hooks/useLanguage';
 import { t } from '@/i18n';
 import { formatDayMonth } from '@/i18n/format';
 import { habitName } from '@/i18n/habits';
-import { colors, fonts, radii } from '@/theme';
+import { colors, createStyles, fonts, radii, s } from '@/theme';
 
 export const CELL_GAP = 6;
 export const CELL_HEIGHT = 42;
@@ -25,7 +25,7 @@ interface Props {
 
 function MonthGridBase({ month, habits, width, selected, today, onSelect }: Props) {
   useLanguage();
-  const cellWidth = Math.floor((width - CELL_GAP * 6) / 7);
+  const cellWidth = Math.floor((width - s(CELL_GAP) * 6) / 7);
   const cells: (DayCell | null)[] = [...Array<null>(month.leadingBlanks).fill(null), ...month.days];
   while (cells.length % 7) cells.push(null);
   const rows: (DayCell | null)[][] = [];
@@ -46,7 +46,7 @@ function MonthGridBase({ month, habits, width, selected, today, onSelect }: Prop
             cell ? (
               <Cell key={cell.date} cell={cell} habits={habits} width={cellWidth} selected={cell.date === selected} today={today} onSelect={onSelect} />
             ) : (
-              <View key={`blank-${c}`} style={{ width: cellWidth, height: CELL_HEIGHT }} />
+              <View key={`blank-${c}`} style={{ width: cellWidth, height: s(CELL_HEIGHT) }} />
             ),
           )}
         </View>
@@ -116,7 +116,7 @@ function Cell({
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createStyles({
   grid: { gap: CELL_GAP },
   row: { flexDirection: 'row', gap: CELL_GAP },
   weekday: { textAlign: 'center', fontFamily: fonts.text600, fontSize: 12, color: colors.textSecondary },

@@ -5,7 +5,7 @@ import Animated, { FadeIn, ZoomIn } from 'react-native-reanimated';
 
 import type { Habit } from '@/domain/types';
 import { t } from '@/i18n';
-import { colors, fonts, MAX_FONT_SCALE_TEXT } from '@/theme';
+import { colors, createStyles, fonts, MAX_FONT_SCALE_TEXT, s } from '@/theme';
 
 interface Props {
   habit: Habit | null;
@@ -63,13 +63,13 @@ export function MilestoneOverlay({ habit, milestone, onClose }: Props) {
 function Decor() {
   return (
     <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-      <View style={[styles.circle, { top: -80, right: -60, width: 260, height: 260 }]} />
-      <View style={[styles.circle, { bottom: 60, left: -90, width: 220, height: 220 }]} />
+      <View style={[styles.circle, { top: s(-80), right: s(-60), width: s(260), height: s(260) }]} />
+      <View style={[styles.circle, { bottom: s(60), left: s(-90), width: s(220), height: s(220) }]} />
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createStyles({
   root: { flex: 1, justifyContent: 'center', paddingHorizontal: 28, paddingVertical: 64 },
   circle: { position: 'absolute', borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.08)' },
   content: { gap: 12 },

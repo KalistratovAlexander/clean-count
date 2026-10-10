@@ -1,16 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo, useRef, useState } from 'react';
-import {
-  Alert,
-  FlatList,
-  ScrollView,
-  StyleSheet,
-  Text,
-  useWindowDimensions,
-  View,
-  type NativeScrollEvent,
-  type NativeSyntheticEvent,
-} from 'react-native';
+import { Alert, FlatList, ScrollView, Text, useWindowDimensions, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import { useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -30,7 +20,7 @@ import { t } from '@/i18n';
 import { formatMonthTitle } from '@/i18n/format';
 import { habitName } from '@/i18n/habits';
 import { useAppStore } from '@/store/appStore';
-import { colors, fonts, MAX_FONT_SCALE_NUMBERS, MAX_FONT_SCALE_TEXT, radii, spacing } from '@/theme';
+import { colors, createStyles, fonts, MAX_FONT_SCALE_NUMBERS, MAX_FONT_SCALE_TEXT, radii, s, spacing } from '@/theme';
 
 export default function CalendarScreen() {
   const insets = useSafeAreaInsets();
@@ -42,7 +32,7 @@ export default function CalendarScreen() {
   const removeRelapse = useAppStore((s) => s.removeRelapse);
   const { today } = useClock();
   useLanguage();
-  const flow = useRelapseFlow(Math.max(insets.bottom, 16) + 8);
+  const flow = useRelapseFlow(Math.max(insets.bottom, s(16)) + s(8));
 
   const filters = useMemo<CalendarFilter[]>(
     () => (habits.length > 1 ? ['all', ...habits.map((h) => h.id)] : habits.map((h) => h.id)),
@@ -58,7 +48,7 @@ export default function CalendarScreen() {
   const list = useRef<FlatList<YearMonth>>(null);
 
   const pageWidth = width;
-  const gridWidth = pageWidth - spacing.screenX * 2;
+  const gridWidth = pageWidth - s(spacing.screenX) * 2;
   const safeIndex = Math.min(Math.max(0, monthIndex), months.length - 1);
   const currentMonth = months[safeIndex]!;
 
@@ -118,7 +108,7 @@ export default function CalendarScreen() {
   return (
     <View style={styles.root}>
       <ScrollView
-        contentContainerStyle={[styles.content, { paddingTop: insets.top + 12, paddingBottom: insets.bottom + 28 }]}
+        contentContainerStyle={[styles.content, { paddingTop: insets.top + s(12), paddingBottom: insets.bottom + s(28) }]}
         showsVerticalScrollIndicator={false}
       >
         <View style={[styles.header, styles.padded]}>
@@ -238,7 +228,7 @@ function LegendItem({ color, label, border }: { color: string; label: string; bo
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createStyles({
   root: { flex: 1, backgroundColor: colors.background },
   content: { gap: 16 },
   padded: { paddingHorizontal: spacing.screenX },

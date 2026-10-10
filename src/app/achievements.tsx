@@ -1,6 +1,6 @@
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { ScrollView, Text, useWindowDimensions, View } from 'react-native';
 import { useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -15,7 +15,7 @@ import { useLanguage } from '@/hooks/useLanguage';
 import { t } from '@/i18n';
 import { habitName } from '@/i18n/habits';
 import { useAppStore } from '@/store/appStore';
-import { colors, fonts, MAX_FONT_SCALE_NUMBERS, MAX_FONT_SCALE_TEXT, radii, spacing } from '@/theme';
+import { colors, createStyles, fonts, MAX_FONT_SCALE_NUMBERS, MAX_FONT_SCALE_TEXT, radii, s, spacing } from '@/theme';
 
 const BADGE_COLUMNS = 5;
 const BADGE_GAP = 8;
@@ -54,7 +54,7 @@ export default function AchievementsScreen() {
   const badges = milestonesUpTo(stats.goal);
   const earlierCount = achieved.filter((m) => m > currentTop).length;
   // Ровная сетка: пять плиток в ряд одинаковой ширины независимо от числа цифр.
-  const badgeWidth = Math.floor((width - spacing.screenX * 2 - BADGE_GAP * (BADGE_COLUMNS - 1)) / BADGE_COLUMNS);
+  const badgeWidth = Math.floor((width - s(spacing.screenX) * 2 - s(BADGE_GAP) * (BADGE_COLUMNS - 1)) / BADGE_COLUMNS);
 
   const select = (i: number) => {
     position.set(withTiming(i, { duration: 220 }));
@@ -64,7 +64,7 @@ export default function AchievementsScreen() {
   return (
     <ScrollView
       style={styles.root}
-      contentContainerStyle={[styles.content, { paddingTop: insets.top + 12, paddingBottom: insets.bottom + 28 }]}
+      contentContainerStyle={[styles.content, { paddingTop: insets.top + s(12), paddingBottom: insets.bottom + s(28) }]}
     >
       <View style={styles.header}>
         <IconButton label={t.achievements.back} onPress={() => router.back()}>
@@ -207,7 +207,7 @@ function LegendItem({ label, fill, border, dashed }: { label: string; fill?: str
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createStyles({
   root: { flex: 1, backgroundColor: colors.background },
   content: { paddingHorizontal: spacing.screenX, gap: 14 },
   header: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 2 },

@@ -1,7 +1,7 @@
 import { randomUUID } from 'expo-crypto';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -19,7 +19,7 @@ import { t } from '@/i18n';
 import { formatFullDate, formatTime } from '@/i18n/format';
 import { habitLabel, habitName } from '@/i18n/habits';
 import { useAppStore } from '@/store/appStore';
-import { colors, fieldRow, fonts, HIT, MAX_FONT_SCALE_TEXT, radii, spacing } from '@/theme';
+import { colors, createStyles, fieldRow, fonts, HIT, MAX_FONT_SCALE_TEXT, radii, s, spacing } from '@/theme';
 
 const STEPS = 3;
 
@@ -106,7 +106,7 @@ export default function OnboardingScreen() {
   };
 
   return (
-    <View style={[styles.root, { paddingTop: insets.top + 16, paddingBottom: Math.max(insets.bottom, 16) + 8 }]}>
+    <View style={[styles.root, { paddingTop: insets.top + s(16), paddingBottom: Math.max(insets.bottom, s(16)) + s(8) }]}>
       <View style={styles.progress} accessible accessibilityLabel={t.onboarding.step(step + 1, STEPS)}>
         {Array.from({ length: STEPS }, (_, i) => (
           <View key={i} style={[styles.dot, i === step && styles.dotActive, i < step && styles.dotDone]} />
@@ -338,7 +338,7 @@ function FieldRow({ label, value, onPress }: { label: string; value: string; onP
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createStyles({
   root: { flex: 1, backgroundColor: colors.background },
   progress: { flexDirection: 'row', justifyContent: 'center', gap: 6, paddingBottom: 8 },
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.border },

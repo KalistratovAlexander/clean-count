@@ -118,9 +118,26 @@ export async function loadSnapshot(): Promise<Snapshot> {
   return { habits: sortHabits(habits), relapses: relapseRows.map(toRelapse), settings };
 }
 
-const UPSERT_HABIT = `INSERT OR REPLACE INTO habits
+/**
+ * Именно UPSERT, а не `INSERT OR REPLACE`: REPLACE удаляет старую строку и вставляет новую,
+ * а удаление строки привычки каскадом стирает все её срывы (`ON DELETE CASCADE` в `relapses`).
+ */
+const UPSERT_HABIT = `INSERT INTO habits
   (id, preset, name, emoji, color, unit, kinds, sort_order, enabled, quit_at, milestones_shown, celebrated_since, celebrated_up_to)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  ON CONFLICT(id) DO UPDATE SET
+    preset = excluded.preset,
+    name = excluded.name,
+    emoji = excluded.emoji,
+    color = excluded.color,
+    unit = excluded.unit,
+    kinds = excluded.kinds,
+    sort_order = excluded.sort_order,
+    enabled = excluded.enabled,
+    quit_at = excluded.quit_at,
+    milestones_shown = excluded.milestones_shown,
+    celebrated_since = excluded.celebrated_since,
+    celebrated_up_to = excluded.celebrated_up_to`;
 const habitParams = (h: Habit) =>
   [
     h.id,
