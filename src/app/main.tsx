@@ -75,7 +75,7 @@ export default function MainScreen() {
   const tabsInHeader = habits.length > 1 && habits.length <= 3;
   const tabs = habits.length > 1 && (
     <HabitTabs
-      tabs={habits.map((h) => ({ key: h.id, label: habitName(h), emoji: h.emoji }))}
+      tabs={habits.map((h) => ({ key: h.id, label: habitName(h), color: h.color }))}
       position={position}
       selectedIndex={index}
       onSelect={(i) => pager.current?.setPage(i)}

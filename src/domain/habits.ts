@@ -11,16 +11,15 @@ import {
 /** Что вводит пользователь при создании или правке своей привычки. */
 export interface CustomHabitInput {
   name: string;
-  emoji: string;
   color: string;
   unit: HabitUnit;
   /** Виды срыва одной строкой через запятую или уже списком. */
   kinds: string | string[];
 }
 
-export type CustomHabitError = 'name' | 'emoji';
+export type CustomHabitError = 'name';
 
-/** Первый символ строки как одна графема: эмодзи с модификаторами остаются целыми. */
+/** Первый символ строки как одна графема (буква для значка своей привычки; составные символы не режутся). */
 export function firstGrapheme(text: string): string {
   const trimmed = text.trim();
   if (!trimmed) return '';
@@ -46,10 +45,9 @@ export function parseKinds(kinds: string | string[]): string[] {
   return result.slice(0, HABIT_KINDS_MAX);
 }
 
-export function normalizeCustomHabit(input: CustomHabitInput): { name: string; emoji: string; color: string; unit: HabitUnit; kinds: string[] } {
+export function normalizeCustomHabit(input: CustomHabitInput): { name: string; color: string; unit: HabitUnit; kinds: string[] } {
   return {
     name: input.name.trim().slice(0, HABIT_NAME_MAX_LENGTH),
-    emoji: firstGrapheme(input.emoji),
     color: input.color,
     unit: input.unit,
     kinds: parseKinds(input.kinds),
@@ -58,10 +56,7 @@ export function normalizeCustomHabit(input: CustomHabitInput): { name: string; e
 
 /** Ошибка ввода или null, если привычку можно сохранить. */
 export function validateCustomHabit(input: CustomHabitInput): CustomHabitError | null {
-  const n = normalizeCustomHabit(input);
-  if (!n.name) return 'name';
-  if (!n.emoji) return 'emoji';
-  return null;
+  return normalizeCustomHabit(input).name ? null : 'name';
 }
 
 export function createCustomHabit(input: CustomHabitInput, id: string, order: number): Habit {
@@ -70,7 +65,6 @@ export function createCustomHabit(input: CustomHabitInput, id: string, order: nu
     id,
     preset: null,
     name: n.name,
-    emoji: n.emoji,
     color: n.color,
     unit: n.unit,
     kinds: n.kinds,
@@ -86,7 +80,7 @@ export function createCustomHabit(input: CustomHabitInput, id: string, order: nu
 /** Применяет правку своей привычки, не трогая даты, достижения и порядок. */
 export function applyCustomHabit(habit: Habit, input: CustomHabitInput): Habit {
   const n = normalizeCustomHabit(input);
-  return { ...habit, name: n.name, emoji: n.emoji, color: n.color, unit: n.unit, kinds: n.kinds };
+  return { ...habit, name: n.name, color: n.color, unit: n.unit, kinds: n.kinds };
 }
 
 /** Виды срыва привычки: ключи встроенных или названия своих. Пусто — срыв записывается без вида. */

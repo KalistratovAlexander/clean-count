@@ -30,7 +30,7 @@ import { emptyHabit, type Habit, type Relapse } from '../types';
 const MSK = 'Europe/Moscow';
 
 const coffee: Habit = {
-  ...createCustomHabit({ name: 'Кофе', emoji: '☕️', color: '#B45309', unit: 'servings', kinds: 'Эспрессо, Латте' }, 'coffee', 2),
+  ...createCustomHabit({ name: 'Кофе', color: '#B45309', unit: 'servings', kinds: 'Эспрессо, Латте' }, 'coffee', 2),
   quitAt: '2026-09-01T00:00:00+03:00',
 };
 
@@ -305,7 +305,7 @@ describe('календарь', () => {
 });
 
 describe('свои привычки', () => {
-  it('первая графема: эмодзи с модификаторами не режутся', () => {
+  it('первая графема для значка: составные символы не режутся', () => {
     expect(firstGrapheme('  ☕️ кофе')).toBe('☕️');
     expect(firstGrapheme('👨‍👩‍👧x')).toBe('👨‍👩‍👧');
     expect(firstGrapheme('ab')).toBe('a');
@@ -319,16 +319,15 @@ describe('свои привычки', () => {
     expect(parseKinds('')).toEqual([]);
   });
 
-  it('проверка ввода: нужны название и эмодзи', () => {
-    const base = { name: 'Кофе', emoji: '☕️', color: '#B45309', unit: 'times' as const, kinds: '' };
+  it('проверка ввода: нужно название', () => {
+    const base = { name: 'Кофе', color: '#B45309', unit: 'times' as const, kinds: '' };
     expect(validateCustomHabit(base)).toBeNull();
     expect(validateCustomHabit({ ...base, name: '   ' })).toBe('name');
-    expect(validateCustomHabit({ ...base, emoji: '' })).toBe('emoji');
   });
 
-  it('создание: обрезает название, берёт одну графему, включена без даты', () => {
-    const h = createCustomHabit({ name: ` ${'н'.repeat(40)} `, emoji: '🍩🍰', color: '#000000', unit: 'money', kinds: 'a, b' }, 'id1', 5);
-    expect(h).toMatchObject({ id: 'id1', preset: null, name: 'н'.repeat(24), emoji: '🍩', unit: 'money', kinds: ['a', 'b'], order: 5, enabled: true, quitAt: null });
+  it('создание: обрезает название, включена без даты', () => {
+    const h = createCustomHabit({ name: ` ${'н'.repeat(40)} `, color: '#000000', unit: 'money', kinds: 'a, b' }, 'id1', 5);
+    expect(h).toMatchObject({ id: 'id1', preset: null, name: 'н'.repeat(24), unit: 'money', kinds: ['a', 'b'], order: 5, enabled: true, quitAt: null });
     expect(h.milestonesEarned).toEqual([]);
   });
 

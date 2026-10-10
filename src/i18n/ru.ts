@@ -65,9 +65,6 @@ export const ru = {
     editTitle: 'Изменить привычку',
     name: 'Название',
     namePlaceholder: 'Например, кофе',
-    emoji: 'Значок',
-    emojiPlaceholder: '☕️',
-    emojiHint: 'Любой эмодзи с клавиатуры',
     color: 'Цвет',
     unit: 'Что считать при срыве',
     kinds: 'Виды срыва',
@@ -81,7 +78,6 @@ export const ru = {
     deleteTitle: 'Удалить привычку?',
     deleteText: 'Удалятся все её срывы и достижения.',
     errorName: 'Введите название',
-    errorEmoji: 'Выберите эмодзи',
     cardText: (name: string) => `Считать дни без срывов: ${name}`,
   },
 

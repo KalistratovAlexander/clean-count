@@ -125,7 +125,7 @@ export default function CalendarScreen() {
             <HabitTabs
               tabs={filters.map((f) => {
                 const habit = habits.find((h) => h.id === f);
-                return { key: f, label: habit ? habitName(habit) : t.calendar.all, emoji: habit?.emoji };
+                return { key: f, label: habit ? habitName(habit) : t.calendar.all, color: habit?.color };
               })}
               position={filterPosition}
               selectedIndex={filters.indexOf(filter)}

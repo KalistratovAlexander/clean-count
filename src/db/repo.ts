@@ -18,7 +18,6 @@ interface HabitRow {
   id: string;
   preset: string | null;
   name: string;
-  emoji: string | null;
   color: string;
   unit: string;
   kinds: string;
@@ -64,7 +63,6 @@ const toHabit = (row: HabitRow): Habit => ({
   id: row.id,
   preset: isPreset(row.preset) ? row.preset : null,
   name: row.name,
-  emoji: row.emoji,
   color: row.color,
   unit: toUnit(row.unit),
   kinds: parseJsonList(row.kinds, isString),
@@ -123,12 +121,11 @@ export async function loadSnapshot(): Promise<Snapshot> {
  * а удаление строки привычки каскадом стирает все её срывы (`ON DELETE CASCADE` в `relapses`).
  */
 const UPSERT_HABIT = `INSERT INTO habits
-  (id, preset, name, emoji, color, unit, kinds, sort_order, enabled, quit_at, milestones_shown, celebrated_since, celebrated_up_to)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  (id, preset, name, color, unit, kinds, sort_order, enabled, quit_at, milestones_shown, celebrated_since, celebrated_up_to)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   ON CONFLICT(id) DO UPDATE SET
     preset = excluded.preset,
     name = excluded.name,
-    emoji = excluded.emoji,
     color = excluded.color,
     unit = excluded.unit,
     kinds = excluded.kinds,
@@ -143,7 +140,6 @@ const habitParams = (h: Habit) =>
     h.id,
     h.preset,
     h.name,
-    h.emoji,
     h.color,
     h.unit,
     JSON.stringify(h.kinds),

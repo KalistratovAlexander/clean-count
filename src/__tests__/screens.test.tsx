@@ -97,7 +97,6 @@ const coffee: Habit = {
   id: 'c0ffee00-0000-4000-8000-000000000001',
   preset: null,
   name: 'Кофе',
-  emoji: '☕️',
   color: '#B45309',
   unit: 'servings',
   kinds: ['Эспрессо', 'Латте'],
@@ -493,7 +492,7 @@ describe('свои привычки', () => {
   });
 
   it('привычка без видов срыва: вид не спрашивается, деньги вводятся суммой', async () => {
-    const money: Habit = { ...coffee, id: 'c0ffee00-0000-4000-8000-000000000002', name: 'Ставки', emoji: '🎰', unit: 'money', kinds: [] };
+    const money: Habit = { ...coffee, id: 'c0ffee00-0000-4000-8000-000000000002', name: 'Ставки', unit: 'money', kinds: [] };
     seed({ alcohol, smoking, customs: [money] });
     useAppStore.getState().setLastScreen(money.id);
     await renderScreen(<MainScreen />);
@@ -511,9 +510,8 @@ describe('свои привычки', () => {
     seed({ alcohol, smoking, customs: [coffee] }, [...relapses, r]);
     mockParams = { filter: coffee.id };
     await renderScreen(<CalendarScreen />);
-    // Четыре вкладки — прокручиваемые чипы с эмодзи.
+    // Четыре вкладки — прокручиваемые чипы.
     expect(screen.getAllByRole('tab')).toHaveLength(4);
-    expect(screen.getByText('☕️')).toBeTruthy();
     await fireEvent.press(screen.getByLabelText('10 сентября, срыв: Кофе'));
     expect(screen.getByText('Кофе · латте')).toBeTruthy();
     expect(screen.getByLabelText('1 срыв «Кофе» за месяц')).toBeTruthy();
@@ -534,13 +532,10 @@ describe('свои привычки', () => {
     await fireEvent.press(screen.getByRole('button', { name: 'Добавить свою привычку' }));
     expect(screen.getByText('Новая привычка')).toBeTruthy();
 
-    // Без названия и значка не сохраняется.
+    // Без названия не сохраняется.
     await fireEvent.press(screen.getByRole('button', { name: 'Добавить' }));
     expect(screen.getByText('Введите название')).toBeTruthy();
     await fireEvent.changeText(screen.getByLabelText('Название'), 'Сладкое');
-    await fireEvent.press(screen.getByRole('button', { name: 'Добавить' }));
-    expect(screen.getByText('Выберите эмодзи')).toBeTruthy();
-    await fireEvent.changeText(screen.getByLabelText('Значок'), '🍩🍰');
     await fireEvent.press(screen.getByRole('radio', { name: 'Штуки' }));
     await fireEvent.changeText(screen.getByLabelText('Виды срыва'), 'торт, конфеты, торт');
     await fireEvent.press(screen.getByRole('button', { name: 'Добавить' }));
@@ -556,7 +551,6 @@ describe('свои привычки', () => {
       expect.objectContaining({
         preset: null,
         name: 'Сладкое',
-        emoji: '🍩',
         unit: 'pieces',
         kinds: ['торт', 'конфеты'],
         order: 2,
@@ -575,10 +569,9 @@ describe('свои привычки', () => {
     expect(mockPick).toHaveBeenCalledWith(expect.objectContaining({ mode: 'date' }));
     expect(await screen.findByText('Новая привычка')).toBeTruthy();
     await fireEvent.changeText(screen.getByLabelText('Название'), 'Кофе');
-    await fireEvent.changeText(screen.getByLabelText('Значок'), '☕️');
     await fireEvent.press(screen.getByRole('button', { name: 'Добавить' }));
     expect(repo.saveHabit).toHaveBeenCalledWith(
-      expect.objectContaining({ preset: null, name: 'Кофе', emoji: '☕️', enabled: true, quitAt: '2026-09-28T00:00:00+03:00', order: 2 }),
+      expect.objectContaining({ preset: null, name: 'Кофе', enabled: true, quitAt: '2026-09-28T00:00:00+03:00', order: 2 }),
     );
     const added = useAppStore.getState().habits.find((h) => h.name === 'Кофе')!;
     expect(screen.getByLabelText('Считать: Кофе')).toBeTruthy();

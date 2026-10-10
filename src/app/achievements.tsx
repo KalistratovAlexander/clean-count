@@ -77,7 +77,7 @@ export default function AchievementsScreen() {
 
       {habits.length > 1 && (
         <HabitTabs
-          tabs={habits.map((h) => ({ key: h.id, label: habitName(h), emoji: h.emoji }))}
+          tabs={habits.map((h) => ({ key: h.id, label: habitName(h), color: h.color }))}
           position={position}
           selectedIndex={index}
           onSelect={select}

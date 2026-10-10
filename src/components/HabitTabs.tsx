@@ -7,7 +7,8 @@ import { colors, createStyles, fonts, HIT, MAX_FONT_SCALE_TEXT, radii } from '@/
 import { SegmentedControl, type Segment } from './SegmentedControl';
 
 export interface HabitTab extends Segment {
-  emoji?: string | null;
+  /** Цвет привычки для точки перед названием; у «Все» нет. */
+  color?: string;
 }
 
 interface Props {
@@ -71,11 +72,7 @@ export function HabitTabs({ tabs, position, selectedIndex, onSelect, fontSize, a
             accessibilityLabel={tab.label}
             style={[styles.chip, on && styles.chipOn]}
           >
-            {tab.emoji ? (
-              <Text style={styles.emoji} allowFontScaling={false}>
-                {tab.emoji}
-              </Text>
-            ) : null}
+            {tab.color ? <View style={[styles.dot, { backgroundColor: tab.color }]} /> : null}
             <Text style={[styles.label, on && styles.labelOn]} numberOfLines={1} maxFontSizeMultiplier={MAX_FONT_SCALE_TEXT}>
               {tab.label}
             </Text>
@@ -99,7 +96,7 @@ const styles = createStyles({
     backgroundColor: colors.subtle,
   },
   chipOn: { backgroundColor: colors.textPrimary },
-  emoji: { fontSize: 16 },
+  dot: { width: 10, height: 10, borderRadius: 5 },
   label: { fontFamily: fonts.text600, fontSize: 15, color: colors.textSecondary, maxWidth: 160 },
   labelOn: { color: colors.onDark },
   tail: { width: 4 },

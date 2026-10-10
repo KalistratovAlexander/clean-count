@@ -57,9 +57,6 @@ export const en: Strings = {
     editTitle: 'Edit habit',
     name: 'Name',
     namePlaceholder: 'For example, coffee',
-    emoji: 'Icon',
-    emojiPlaceholder: '☕️',
-    emojiHint: 'Any emoji from the keyboard',
     color: 'Colour',
     unit: 'What to count on a relapse',
     kinds: 'Relapse types',
@@ -73,7 +70,6 @@ export const en: Strings = {
     deleteTitle: 'Delete this habit?',
     deleteText: 'All its relapses and achievements will be deleted.',
     errorName: 'Enter a name',
-    errorEmoji: 'Pick an emoji',
     cardText: (name: string) => `Count relapse-free days: ${name}`,
   },
 

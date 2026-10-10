@@ -42,8 +42,6 @@ export interface Habit {
   preset: PresetId | null;
   /** Название своей привычки; у встроенных пусто, название берётся из словаря. */
   name: string;
-  /** Эмодзи своей привычки; у встроенных null — рисуется иконка. */
-  emoji: string | null;
   /** Цвет карточек и календаря, HEX. */
   color: string;
   unit: HabitUnit;
@@ -67,7 +65,6 @@ export const emptyHabit = (id: PresetId): Habit => ({
   id,
   preset: id,
   name: '',
-  emoji: null,
   color: PRESET_COLORS[id],
   unit: id === 'smoking' ? 'pieces' : 'times',
   kinds: [],

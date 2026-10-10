@@ -37,14 +37,13 @@ const MIGRATIONS: string[] = [
   ALTER TABLE habits ADD COLUMN celebrated_up_to INTEGER NOT NULL DEFAULT 0;
   `,
   // Произвольные привычки: id больше не ограничен двумя значениями, у привычки появились
-  // признак встроенной, название, эмодзи, цвет, единица счёта, свои виды срыва и порядок.
+  // признак встроенной, название, цвет, единица счёта, свои виды срыва и порядок.
   // Таблицы пересоздаются с переносом данных; у срыва вид может отсутствовать, сумма — до 999 999.
   `
   CREATE TABLE habits_v3 (
     id TEXT PRIMARY KEY NOT NULL,
     preset TEXT CHECK (preset IS NULL OR preset IN ('alcohol', 'smoking')),
     name TEXT NOT NULL DEFAULT '',
-    emoji TEXT,
     color TEXT NOT NULL,
     unit TEXT NOT NULL DEFAULT 'times',
     kinds TEXT NOT NULL DEFAULT '[]',
@@ -55,8 +54,8 @@ const MIGRATIONS: string[] = [
     celebrated_since TEXT,
     celebrated_up_to INTEGER NOT NULL DEFAULT 0
   );
-  INSERT INTO habits_v3 (id, preset, name, emoji, color, unit, kinds, sort_order, enabled, quit_at, milestones_shown, celebrated_since, celebrated_up_to)
-    SELECT id, id, '', NULL,
+  INSERT INTO habits_v3 (id, preset, name, color, unit, kinds, sort_order, enabled, quit_at, milestones_shown, celebrated_since, celebrated_up_to)
+    SELECT id, id, '',
       CASE id WHEN 'alcohol' THEN '#2B3AE0' ELSE '#0F766E' END,
       CASE id WHEN 'smoking' THEN 'pieces' ELSE 'times' END,
       '[]', CASE id WHEN 'alcohol' THEN 0 ELSE 1 END,
