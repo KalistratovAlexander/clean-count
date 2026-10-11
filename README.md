@@ -57,16 +57,22 @@ npx expo run:android
 
 ### Релизная сборка и загрузка в App Store
 
-1. Войти в Xcode под учётной записью разработчика (Xcode → Settings → Accounts) и узнать Team ID (developer.apple.com/account → Membership details).
-2. В App Store Connect создать приложение с bundle id `ru.kickerlover.cleancount`.
+1. Узнать Team ID (developer.apple.com/account → Membership details) и выбрать способ подписи:
+   - **Вход в Xcode** (Xcode → Settings → Accounts) под участником команды с ролью Admin или Account Holder. Xcode сам выпустит сертификат распространения через облачную подпись.
+   - **Ключ App Store Connect API** — надёжнее, не зависит от входа в Xcode и работает на любом Mac. В App Store Connect → Пользователи и доступ → Интеграции → Ключи API создать ключ с доступом Admin, скачать `AuthKey_XXXXXXXXXX.p8` (скачивается один раз) и запомнить Key ID и Issuer ID. Файл хранить вне репозитория и никому не пересылать.
+2. В App Store Connect создать приложение с bundle id `ru.kickerlover.cleancount` (уже создано).
 3. Собрать архив и `.ipa`:
 
    ```bash
    TEAM_ID=XXXXXXXXXX scripts/archive-ios.sh            # результат в build/ios/export
    TEAM_ID=XXXXXXXXXX scripts/archive-ios.sh --upload   # и сразу загрузить в App Store Connect (TestFlight)
+
+   # с ключом API вместо входа в Xcode:
+   TEAM_ID=XXXXXXXXXX ASC_KEY_PATH=~/AuthKey_XXXXXXXXXX.p8 ASC_KEY_ID=XXXXXXXXXX ASC_ISSUER_ID=<uuid> scripts/archive-ios.sh --upload
    ```
 
-4. Перед каждой новой загрузкой увеличить `ios.buildNumber` в `app.json`.
+   Скрипт каждый раз пересоздаёт `ios/` из `app.json` (`expo prebuild --clean`), поэтому версия и номер сборки всегда берутся из `app.json`.
+4. Перед каждой новой загрузкой увеличить `ios.buildNumber` в `app.json`. Загруженная сборка появляется в App Store Connect → TestFlight через 10–30 минут; внутренним тестировщикам (участникам команды) она доступна сразу, внешним — после Beta App Review.
 5. Если в команде ещё нет ни одного устройства, при первом запуске подключить iPhone кабелем: скрипт соберёт приложение под него, зарегистрирует телефон в команде и выпустит профиль разработки, который нужен Xcode для архивации. Дальше телефон не нужен.
 
 - Проверка релизной конфигурации на симуляторе без Metro: `npx expo run:ios --configuration Release`.
