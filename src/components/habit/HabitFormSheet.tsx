@@ -1,14 +1,14 @@
 import { useState } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
 
-import { validateCustomHabit, type CustomHabitError, type CustomHabitInput } from '@/domain/habits';
-import { HABIT_NAME_MAX_LENGTH, HABIT_UNITS, type Habit, type HabitUnit } from '@/domain/types';
+import { suggestHabitIcon, validateCustomHabit, type CustomHabitError, type CustomHabitInput } from '@/domain/habits';
+import { HABIT_ICONS, HABIT_NAME_MAX_LENGTH, HABIT_UNITS, type Habit, type HabitIconId, type HabitUnit } from '@/domain/types';
 import { t } from '@/i18n';
 import { colors, createStyles, CUSTOM_HABIT_COLORS, fonts, HIT, MAX_FONT_SCALE_TEXT, radii } from '@/theme';
 
 import { BottomSheet } from '../BottomSheet';
 import { PillButton } from '../buttons';
-import { CheckIcon } from '../icons';
+import { CheckIcon, CustomHabitIcon } from '../icons';
 
 interface Props {
   visible: boolean;
@@ -20,7 +20,7 @@ interface Props {
   onDelete?: () => void;
 }
 
-/** Нижнее окно создания и правки своей привычки: название, цвет, единица, виды срыва. */
+/** Нижнее окно создания и правки своей привычки: название, значок, цвет, единица, виды срыва. */
 export function HabitFormSheet({ visible, initial, onClose, onSubmit, onDelete }: Props) {
   const [session, setSession] = useState(0);
   const [wasVisible, setWasVisible] = useState(visible);
@@ -38,13 +38,16 @@ export function HabitFormSheet({ visible, initial, onClose, onSubmit, onDelete }
 function HabitForm({ initial, onClose, onSubmit, onDelete }: Omit<Props, 'visible'>) {
   const [name, setName] = useState(initial?.name ?? '');
   const [color, setColor] = useState(initial?.color ?? CUSTOM_HABIT_COLORS[0]!);
+  // Пока значок не выбран вручную, он подбирается по названию.
+  const [pickedIcon, setPickedIcon] = useState<HabitIconId | null>(initial?.icon ?? null);
   const [unit, setUnit] = useState<HabitUnit>(initial?.unit ?? 'times');
   const [kinds, setKinds] = useState(initial?.kinds.join(', ') ?? '');
   const [error, setError] = useState<CustomHabitError | null>(null);
   const [saving, setSaving] = useState(false);
+  const icon = pickedIcon ?? suggestHabitIcon(name);
 
   const submit = async () => {
-    const input: CustomHabitInput = { name, color, unit, kinds };
+    const input: CustomHabitInput = { name, color, icon, unit, kinds };
     const problem = validateCustomHabit(input);
     if (problem) {
       setError(problem);
@@ -88,6 +91,29 @@ function HabitForm({ initial, onClose, onSubmit, onDelete }: Omit<Props, 'visibl
           {t.habits.errorName}
         </Text>
       )}
+
+      <View style={styles.field}>
+        <Text style={styles.label} maxFontSizeMultiplier={MAX_FONT_SCALE_TEXT}>
+          {t.habits.icon}
+        </Text>
+        <View style={styles.icons} accessibilityRole="radiogroup" accessibilityLabel={t.habits.icon}>
+          {HABIT_ICONS.map((id) => {
+            const on = id === icon;
+            return (
+              <Pressable
+                key={id}
+                onPress={() => setPickedIcon(id)}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: on }}
+                accessibilityLabel={t.habits.icons[id]}
+                style={[styles.iconTile, on && { backgroundColor: color, borderColor: color }]}
+              >
+                <CustomHabitIcon icon={id} size={24} color={on ? colors.onAccent : colors.textPrimary} />
+              </Pressable>
+            );
+          })}
+        </View>
+      </View>
 
       <View style={styles.field}>
         <Text style={styles.label} maxFontSizeMultiplier={MAX_FONT_SCALE_TEXT}>
@@ -177,6 +203,17 @@ const styles = createStyles({
     color: colors.textPrimary,
   },
   error: { fontFamily: fonts.text500, fontSize: 13, color: colors.danger, marginTop: -8 },
+  icons: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  iconTile: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   colors: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   swatch: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
   swatchOn: { borderWidth: 3, borderColor: colors.textPrimary },

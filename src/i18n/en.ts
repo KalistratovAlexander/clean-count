@@ -1,4 +1,4 @@
-import type { Habit, PresetId } from '@/domain/types';
+import type { Habit, HabitIconId, PresetId } from '@/domain/types';
 
 import type { Strings } from './ru';
 
@@ -57,6 +57,29 @@ export const en: Strings = {
     editTitle: 'Edit habit',
     name: 'Name',
     namePlaceholder: 'For example, coffee',
+    icon: 'Icon',
+    icons: {
+      cup: 'Coffee and tea',
+      candy: 'Sweets',
+      cake: 'Pastry and desserts',
+      burger: 'Fast food',
+      soda: 'Soda',
+      bolt: 'Energy drinks',
+      dice: 'Betting and gambling',
+      phone: 'Phone and social media',
+      gamepad: 'Video games',
+      tv: 'TV and series',
+      cart: 'Shopping',
+      pill: 'Pills',
+      leaf: 'Weed',
+      moon: 'Late nights',
+      clock: 'Procrastination',
+      cutlery: 'Overeating',
+      money: 'Spending',
+      chat: 'Swearing and gossip',
+      hand: 'Nail biting',
+      ban: 'Other',
+    } satisfies Record<HabitIconId, string>,
     color: 'Colour',
     unit: 'What to count on a relapse',
     kinds: 'Relapse types',

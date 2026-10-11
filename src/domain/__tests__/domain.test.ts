@@ -17,11 +17,11 @@ import {
 import {
   canAddHabit,
   createCustomHabit,
-  firstGrapheme,
   habitCountsAmount,
   habitKinds,
   parseKinds,
   sortHabits,
+  suggestHabitIcon,
   validateCustomHabit,
 } from '../habits';
 import { buildRelapse, isRelapseDateAllowed, relapseDateRange } from '../relapse';
@@ -30,7 +30,7 @@ import { emptyHabit, type Habit, type Relapse } from '../types';
 const MSK = 'Europe/Moscow';
 
 const coffee: Habit = {
-  ...createCustomHabit({ name: 'Кофе', color: '#B45309', unit: 'servings', kinds: 'Эспрессо, Латте' }, 'coffee', 2),
+  ...createCustomHabit({ name: 'Кофе', color: '#B45309', icon: 'cup', unit: 'servings', kinds: 'Эспрессо, Латте' }, 'coffee', 2),
   quitAt: '2026-09-01T00:00:00+03:00',
 };
 
@@ -305,11 +305,17 @@ describe('календарь', () => {
 });
 
 describe('свои привычки', () => {
-  it('первая графема для значка: составные символы не режутся', () => {
-    expect(firstGrapheme('  ☕️ кофе')).toBe('☕️');
-    expect(firstGrapheme('👨‍👩‍👧x')).toBe('👨‍👩‍👧');
-    expect(firstGrapheme('ab')).toBe('a');
-    expect(firstGrapheme('   ')).toBe('');
+  it('значок подбирается по названию на двух языках, иначе «другое»', () => {
+    expect(suggestHabitIcon('Кофе')).toBe('cup');
+    expect(suggestHabitIcon('Зелёный чай')).toBe('cup');
+    expect(suggestHabitIcon('Сладкое')).toBe('candy');
+    expect(suggestHabitIcon('Азартные игры')).toBe('dice');
+    expect(suggestHabitIcon('Видеоигры')).toBe('gamepad');
+    expect(suggestHabitIcon('Social media')).toBe('phone');
+    expect(suggestHabitIcon('Энергетики')).toBe('bolt');
+    expect(suggestHabitIcon('Поздно ложусь')).toBe('moon');
+    expect(suggestHabitIcon('Что-то странное')).toBe('ban');
+    expect(suggestHabitIcon('')).toBe('ban');
   });
 
   it('виды срыва: через запятую, без дублей и пустых, не больше восьми и двадцати символов', () => {
@@ -320,14 +326,14 @@ describe('свои привычки', () => {
   });
 
   it('проверка ввода: нужно название', () => {
-    const base = { name: 'Кофе', color: '#B45309', unit: 'times' as const, kinds: '' };
+    const base = { name: 'Кофе', color: '#B45309', icon: 'cup' as const, unit: 'times' as const, kinds: '' };
     expect(validateCustomHabit(base)).toBeNull();
     expect(validateCustomHabit({ ...base, name: '   ' })).toBe('name');
   });
 
   it('создание: обрезает название, включена без даты', () => {
-    const h = createCustomHabit({ name: ` ${'н'.repeat(40)} `, color: '#000000', unit: 'money', kinds: 'a, b' }, 'id1', 5);
-    expect(h).toMatchObject({ id: 'id1', preset: null, name: 'н'.repeat(24), unit: 'money', kinds: ['a', 'b'], order: 5, enabled: true, quitAt: null });
+    const h = createCustomHabit({ name: ` ${'н'.repeat(40)} `, color: '#000000', icon: 'nope' as never, unit: 'money', kinds: 'a, b' }, 'id1', 5);
+    expect(h).toMatchObject({ id: 'id1', preset: null, name: 'н'.repeat(24), icon: 'ban', unit: 'money', kinds: ['a', 'b'], order: 5, enabled: true, quitAt: null });
     expect(h.milestonesEarned).toEqual([]);
   });
 

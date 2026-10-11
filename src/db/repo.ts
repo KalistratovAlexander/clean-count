@@ -1,5 +1,6 @@
-import { sortHabits } from '@/domain/habits';
+import { isHabitIcon, sortHabits } from '@/domain/habits';
 import {
+  DEFAULT_HABIT_ICON,
   emptyHabit,
   HABIT_UNITS,
   PRESET_IDS,
@@ -21,6 +22,7 @@ interface HabitRow {
   color: string;
   unit: string;
   kinds: string;
+  icon: string;
   sort_order: number;
   enabled: number;
   quit_at: string | null;
@@ -66,6 +68,7 @@ const toHabit = (row: HabitRow): Habit => ({
   color: row.color,
   unit: toUnit(row.unit),
   kinds: parseJsonList(row.kinds, isString),
+  icon: isHabitIcon(row.icon) ? row.icon : DEFAULT_HABIT_ICON,
   order: row.sort_order,
   enabled: row.enabled === 1,
   quitAt: row.quit_at,
@@ -121,14 +124,15 @@ export async function loadSnapshot(): Promise<Snapshot> {
  * а удаление строки привычки каскадом стирает все её срывы (`ON DELETE CASCADE` в `relapses`).
  */
 const UPSERT_HABIT = `INSERT INTO habits
-  (id, preset, name, color, unit, kinds, sort_order, enabled, quit_at, milestones_shown, celebrated_since, celebrated_up_to)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  (id, preset, name, color, unit, kinds, icon, sort_order, enabled, quit_at, milestones_shown, celebrated_since, celebrated_up_to)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   ON CONFLICT(id) DO UPDATE SET
     preset = excluded.preset,
     name = excluded.name,
     color = excluded.color,
     unit = excluded.unit,
     kinds = excluded.kinds,
+    icon = excluded.icon,
     sort_order = excluded.sort_order,
     enabled = excluded.enabled,
     quit_at = excluded.quit_at,
@@ -143,6 +147,7 @@ const habitParams = (h: Habit) =>
     h.color,
     h.unit,
     JSON.stringify(h.kinds),
+    h.icon,
     h.order,
     h.enabled ? 1 : 0,
     h.quitAt,

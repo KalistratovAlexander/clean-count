@@ -1,6 +1,6 @@
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 
-import type { SmokingKind } from '@/domain/types';
+import type { HabitIconId, SmokingKind } from '@/domain/types';
 import { s } from '@/theme';
 
 interface IconProps {
@@ -103,3 +103,38 @@ export function SmokingKindIcon({ kind, size = 26, color, strokeWidth = 1.7 }: I
   );
 }
 
+
+/**
+ * Значки своих привычек в том же линейном стиле. Набор покрывает типичные привычки:
+ * еда и напитки, экраны и игры, азарт, покупки, вещества, режим, деньги, речь, тело; `ban` — любое другое.
+ */
+const HABIT_ICON_PATHS: Record<HabitIconId, string> = {
+  cup: 'M4 9h12v6a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4V9z M16 10.5h1.5a2.5 2.5 0 0 1 0 5H16 M8.5 3c-.8 1 .8 2 0 3 M12 3c-.8 1 .8 2 0 3',
+  candy: 'M12 8a4 4 0 1 1 0 8a4 4 0 0 1 0-8z M8.6 10.2L4 7.5v9l4.6-2.7 M15.4 10.2L20 7.5v9l-4.6-2.7',
+  cake: 'M4 20h16 M5 20v-6.5h14V20 M5 16.5h14 M12 9.5v4 M12 4.5c-1.2 1.3-1.2 2.3 0 3.5c1.2-1.2 1.2-2.2 0-3.5',
+  burger: 'M4 10c0-3.3 3.6-5 8-5s8 1.7 8 5H4z M4 13.5h16 M4 17h16a2.5 2.5 0 0 1-2.5 3h-11A2.5 2.5 0 0 1 4 17z M8 7.5h.01 M12 7h.01 M16 7.5h.01',
+  soda: 'M10 2.5h4V5l1.5 3v12a2 2 0 0 1-2 2h-3a2 2 0 0 1-2-2V8L10 5V2.5z M8.5 11h7 M8.5 16h7',
+  bolt: 'M13 2.5L5 13.5h6l-1 8l9-11.5h-6l0-7.5z',
+  dice: 'M6 4h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z M8.5 8.5h.01 M15.5 8.5h.01 M12 12h.01 M8.5 15.5h.01 M15.5 15.5h.01',
+  phone: 'M8 2.5h8a2 2 0 0 1 2 2v15a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2v-15a2 2 0 0 1 2-2z M10 5.5h4 M12 18h.01',
+  gamepad: 'M7 7.5h10a4.5 4.5 0 0 1 4.5 4.5v2.5a3 3 0 0 1-5.4 1.8l-1.1-1.8h-6l-1.1 1.8A3 3 0 0 1 2.5 14.5V12A4.5 4.5 0 0 1 7 7.5z M8 10.5v3 M6.5 12h3 M16 11.5h.01 M18 13.5h.01',
+  tv: 'M4 5.5h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-10a1 1 0 0 1 1-1z M8 21h8 M10.5 9l4.5 2.5l-4.5 2.5z',
+  cart: 'M3 4h2.2l2.3 11h11l2-7H6.3 M9.5 20h.01 M17.5 20h.01',
+  pill: 'M5 12a4 4 0 0 1 4-4h6a4 4 0 0 1 0 8H9a4 4 0 0 1-4-4z M12 8v8',
+  leaf: 'M20 4C10.5 4 4 10 4 20c10 0 16-6.5 16-16z M4 20l8-8',
+  moon: 'M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z',
+  clock: 'M12 3a9 9 0 1 0 0 18a9 9 0 0 0 0-18z M12 7v5l3 2',
+  cutlery: 'M6 3v6a2 2 0 0 0 4 0V3 M8 11v10 M17 3c-2 2-3 5-3 8h3v10 M17 3v8',
+  money: 'M3 7h18v10H3z M12 9.5a2.5 2.5 0 1 0 0 5a2.5 2.5 0 0 0 0-5z M6.5 12h.01 M17.5 12h.01',
+  chat: 'M4 5h16v11H9l-5 4V5z M12 8v4 M12 14h.01',
+  hand: 'M7 12V7.5a1.5 1.5 0 0 1 3 0V11 M10 11V5.5a1.5 1.5 0 0 1 3 0V11 M13 11V6.5a1.5 1.5 0 0 1 3 0V12 M16 12.5a1.5 1.5 0 0 1 3 0V15a6 6 0 0 1-6 6h-2a6 6 0 0 1-6-6v-2a1.5 1.5 0 0 1 3 0',
+  ban: 'M12 3a9 9 0 1 0 0 18a9 9 0 0 0 0-18z M6 6l12 12',
+};
+
+export function CustomHabitIcon({ icon, size = 26, color, strokeWidth = 1.7 }: IconProps & { icon: HabitIconId }) {
+  return (
+    <Svg {...base(size)}>
+      <Path d={HABIT_ICON_PATHS[icon]} {...stroke(color, strokeWidth)} />
+    </Svg>
+  );
+}

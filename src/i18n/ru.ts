@@ -1,4 +1,4 @@
-import type { Habit, HabitUnit, Language, PresetId, PresetKind } from '@/domain/types';
+import type { Habit, HabitIconId, HabitUnit, Language, PresetId, PresetKind } from '@/domain/types';
 
 import { plural, type PluralForms } from './plural';
 
@@ -65,6 +65,29 @@ export const ru = {
     editTitle: 'Изменить привычку',
     name: 'Название',
     namePlaceholder: 'Например, кофе',
+    icon: 'Значок',
+    icons: {
+      cup: 'Кофе и чай',
+      candy: 'Сладкое',
+      cake: 'Выпечка и десерты',
+      burger: 'Фастфуд',
+      soda: 'Газировка',
+      bolt: 'Энергетики',
+      dice: 'Ставки и азартные игры',
+      phone: 'Телефон и соцсети',
+      gamepad: 'Видеоигры',
+      tv: 'Сериалы и телевизор',
+      cart: 'Покупки',
+      pill: 'Таблетки',
+      leaf: 'Трава',
+      moon: 'Поздний сон',
+      clock: 'Прокрастинация',
+      cutlery: 'Переедание',
+      money: 'Траты',
+      chat: 'Мат и сплетни',
+      hand: 'Грызть ногти',
+      ban: 'Другое',
+    } satisfies Record<HabitIconId, string>,
     color: 'Цвет',
     unit: 'Что считать при срыве',
     kinds: 'Виды срыва',

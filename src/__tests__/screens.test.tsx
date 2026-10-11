@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, within } from '@testing-library/react-native';
 import type { ReactElement } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -98,6 +98,7 @@ const coffee: Habit = {
   preset: null,
   name: 'Кофе',
   color: '#B45309',
+  icon: 'cup',
   unit: 'servings',
   kinds: ['Эспрессо', 'Латте'],
   order: 2,
@@ -252,18 +253,23 @@ describe('достижения', () => {
     seed({ alcohol, smoking });
     mockParams = { habit: 'alcohol' };
     await renderScreen(<AchievementsScreen />);
+    // Страницы листаются как на главном экране: переключатель и по странице на привычку.
+    expect(screen.getAllByRole('tab')).toHaveLength(2);
+    const page = within(screen.getByTestId('achievements-alcohol'));
     // 42 чистых дня с последнего срыва: вехи 5, 10, 14, 21, 30 — пять достижений.
-    expect(screen.getByText('достижений')).toBeTruthy();
-    expect(screen.getByText('Последнее — 30 дней без алкоголя')).toBeTruthy();
-    expect(screen.getByText('В текущей серии — 5 вех')).toBeTruthy();
-    expect(screen.getByText('Следующая цель — 45 дней, ещё 3 дня')).toBeTruthy();
-    expect(screen.getByLabelText('Месяц, 30 дней, достигнуто')).toBeTruthy();
-    expect(screen.getByLabelText('Три месяца, 90 дней, ещё 48 дней')).toBeTruthy();
-    expect(screen.getByLabelText('Год, 365 дней, ещё 323 дня')).toBeTruthy();
-    expect(screen.getByLabelText('30 дней: достигнуто в текущей серии')).toBeTruthy();
-    expect(screen.getByLabelText('45 дней: текущая цель')).toBeTruthy();
-    expect(screen.queryByLabelText(/^60 дней/)).toBeNull();
-    expect(screen.queryByText(/в прошлых сериях/)).toBeNull();
+    expect(page.getByText('достижений')).toBeTruthy();
+    expect(page.getByText('Последнее — 30 дней без алкоголя')).toBeTruthy();
+    expect(page.getByText('В текущей серии — 5 вех')).toBeTruthy();
+    expect(page.getByText('Следующая цель — 45 дней, ещё 3 дня')).toBeTruthy();
+    expect(page.getByLabelText('Месяц, 30 дней, достигнуто')).toBeTruthy();
+    expect(page.getByLabelText('Три месяца, 90 дней, ещё 48 дней')).toBeTruthy();
+    expect(page.getByLabelText('Год, 365 дней, ещё 323 дня')).toBeTruthy();
+    expect(page.getByLabelText('30 дней: достигнуто в текущей серии')).toBeTruthy();
+    expect(page.getByLabelText('45 дней: текущая цель')).toBeTruthy();
+    expect(page.queryByLabelText(/^60 дней/)).toBeNull();
+    expect(page.queryByText(/в прошлых сериях/)).toBeNull();
+    // Соседняя страница — курение.
+    expect(within(screen.getByTestId('achievements-smoking')).getByText('Последнее — 30 дней без курения')).toBeTruthy();
   });
 
   it('достижения остаются после срыва', async () => {
@@ -271,21 +277,23 @@ describe('достижения', () => {
     seed({ alcohol, smoking }, [...relapses, relapsedToday]);
     mockParams = { habit: 'alcohol' };
     await renderScreen(<AchievementsScreen />);
-    expect(screen.getByText('В текущей серии — 0 вех')).toBeTruthy();
-    expect(screen.getByText('Следующая цель — 5 дней, ещё 5 дней')).toBeTruthy();
+    const page = within(screen.getByTestId('achievements-alcohol'));
+    expect(page.getByText('В текущей серии — 0 вех')).toBeTruthy();
+    expect(page.getByText('Следующая цель — 5 дней, ещё 5 дней')).toBeTruthy();
     // В сетке только цель, прошлая серия свёрнута в строку.
-    expect(screen.getByLabelText('5 дней: текущая цель')).toBeTruthy();
-    expect(screen.queryByLabelText(/^10 дней/)).toBeNull();
-    expect(screen.getByText('Ещё 5 вех получено в прошлых сериях')).toBeTruthy();
-    expect(screen.getByLabelText('Месяц, 30 дней, получено раньше')).toBeTruthy();
+    expect(page.getByLabelText('5 дней: текущая цель')).toBeTruthy();
+    expect(page.queryByLabelText(/^10 дней/)).toBeNull();
+    expect(page.getByText('Ещё 5 вех получено в прошлых сериях')).toBeTruthy();
+    expect(page.getByLabelText('Месяц, 30 дней, получено раньше')).toBeTruthy();
   });
 
   it('без достижений показывает подсказку', async () => {
     seed({ alcohol: { ...alcohol, quitAt: '2026-09-26T00:00:00+03:00', milestonesEarned: [], celebratedSince: null, celebratedUpTo: 0 }, smoking }, []);
     mockParams = { habit: 'alcohol' };
     await renderScreen(<AchievementsScreen />);
-    expect(screen.getByText('Пока нет достижений')).toBeTruthy();
-    expect(screen.getByText('Следующая цель — 5 дней, ещё 3 дня')).toBeTruthy();
+    const page = within(screen.getByTestId('achievements-alcohol'));
+    expect(page.getByText('Пока нет достижений')).toBeTruthy();
+    expect(page.getByText('Следующая цель — 5 дней, ещё 3 дня')).toBeTruthy();
   });
 });
 
@@ -521,8 +529,9 @@ describe('свои привычки', () => {
     seed({ alcohol, smoking, customs: [{ ...coffee, milestonesEarned: reachedMilestones(27) }] });
     mockParams = { habit: coffee.id };
     await renderScreen(<AchievementsScreen />);
-    expect(screen.getByText('Последнее — 21 день без срывов · Кофе')).toBeTruthy();
-    expect(screen.getByText('Следующая цель — 30 дней, ещё 3 дня')).toBeTruthy();
+    const page = within(screen.getByTestId(`achievements-${coffee.id}`));
+    expect(page.getByText('Последнее — 21 день без срывов · Кофе')).toBeTruthy();
+    expect(page.getByText('Следующая цель — 30 дней, ещё 3 дня')).toBeTruthy();
   });
 
   it('при первом запуске можно добавить свою привычку', async () => {
@@ -536,6 +545,9 @@ describe('свои привычки', () => {
     await fireEvent.press(screen.getByRole('button', { name: 'Добавить' }));
     expect(screen.getByText('Введите название')).toBeTruthy();
     await fireEvent.changeText(screen.getByLabelText('Название'), 'Сладкое');
+    // Значок подобран по названию, его можно сменить вручную.
+    expect(screen.getByRole('radio', { name: 'Сладкое' })).toBeSelected();
+    await fireEvent.press(screen.getByRole('radio', { name: 'Выпечка и десерты' }));
     await fireEvent.press(screen.getByRole('radio', { name: 'Штуки' }));
     await fireEvent.changeText(screen.getByLabelText('Виды срыва'), 'торт, конфеты, торт');
     await fireEvent.press(screen.getByRole('button', { name: 'Добавить' }));
@@ -551,6 +563,7 @@ describe('свои привычки', () => {
       expect.objectContaining({
         preset: null,
         name: 'Сладкое',
+        icon: 'cake',
         unit: 'pieces',
         kinds: ['торт', 'конфеты'],
         order: 2,
@@ -571,7 +584,7 @@ describe('свои привычки', () => {
     await fireEvent.changeText(screen.getByLabelText('Название'), 'Кофе');
     await fireEvent.press(screen.getByRole('button', { name: 'Добавить' }));
     expect(repo.saveHabit).toHaveBeenCalledWith(
-      expect.objectContaining({ preset: null, name: 'Кофе', enabled: true, quitAt: '2026-09-28T00:00:00+03:00', order: 2 }),
+      expect.objectContaining({ preset: null, name: 'Кофе', icon: 'cup', enabled: true, quitAt: '2026-09-28T00:00:00+03:00', order: 2 }),
     );
     const added = useAppStore.getState().habits.find((h) => h.name === 'Кофе')!;
     expect(screen.getByLabelText('Считать: Кофе')).toBeTruthy();

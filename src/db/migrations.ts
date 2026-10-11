@@ -80,6 +80,8 @@ const MIGRATIONS: string[] = [
   ALTER TABLE relapses_v3 RENAME TO relapses;
   CREATE INDEX relapses_habit_date ON relapses (habit_id, date);
   `,
+  // 4. Значок своей привычки (версия 1.1, после сборки 3: отдельной миграцией, схему 3 не трогаем).
+  `ALTER TABLE habits ADD COLUMN icon TEXT NOT NULL DEFAULT 'ban';`,
 ];
 
 export async function migrate(db: SQLiteDatabase): Promise<void> {

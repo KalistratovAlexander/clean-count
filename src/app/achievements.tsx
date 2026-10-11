@@ -1,7 +1,8 @@
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { ScrollView, Text, useWindowDimensions, View } from 'react-native';
-import { useSharedValue, withTiming } from 'react-native-reanimated';
+import PagerView from 'react-native-pager-view';
+import { useSharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { IconButton } from '@/components/buttons';
@@ -9,6 +10,7 @@ import { HabitTabs } from '@/components/HabitTabs';
 import { CheckIcon, ChevronLeftIcon } from '@/components/icons';
 import { achievedMilestones, lastReachedMilestone, milestonesUpTo, reachedMilestones, tierMilestones } from '@/domain/milestones';
 import { computeHabitStats } from '@/domain/stats';
+import type { Habit, LocalDate, Relapse } from '@/domain/types';
 import { useClock } from '@/hooks/clock';
 import { useEnabledHabits } from '@/hooks/useEnabledHabits';
 import { useLanguage } from '@/hooks/useLanguage';
@@ -20,10 +22,9 @@ import { colors, createStyles, fonts, MAX_FONT_SCALE_NUMBERS, MAX_FONT_SCALE_TEX
 const BADGE_COLUMNS = 5;
 const BADGE_GAP = 8;
 
-/** Достижения привычки: сводка, главные рубежи и сетка вех текущей серии. */
+/** Достижения: по странице на привычку, листаются свайпом и переключателем, как главный экран. */
 export default function AchievementsScreen() {
   const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
   const params = useLocalSearchParams<{ habit?: string }>();
   const habits = useEnabledHabits();
   const relapses = useAppStore((s) => s.relapses);
@@ -33,15 +34,84 @@ export default function AchievementsScreen() {
   const initialIndex = Math.max(0, habits.findIndex((h) => h.id === params.habit));
   const [index, setIndex] = useState(initialIndex);
   const position = useSharedValue(initialIndex);
-  const habit = habits[Math.min(index, habits.length - 1)];
+  const pager = useRef<PagerView>(null);
 
-  const stats = useMemo(() => (habit ? computeHabitStats(habit, relapses, today) : null), [habit, relapses, today]);
-  const achieved = useMemo(
-    () => (habit && stats ? achievedMilestones(habit.milestonesEarned, stats.daysSinceRelapse) : []),
-    [habit, stats],
+  // Набор привычек поменялся — пейджер пересоздаётся, индекс берём заново.
+  const habitsKey = habits.map((h) => h.id).join();
+  const [prevKey, setPrevKey] = useState(habitsKey);
+  if (prevKey !== habitsKey) {
+    setPrevKey(habitsKey);
+    setIndex(initialIndex);
+    position.set(initialIndex);
+  }
+
+  const select = useCallback((i: number) => setIndex(i), []);
+
+  if (habits.length === 0) return <Redirect href="/main" />;
+
+  const bottom = insets.bottom + s(28);
+  const pages = habits.map((habit) => (
+    <View key={habit.id} testID={`achievements-${habit.id}`} style={styles.page}>
+      <AchievementsPage habit={habit} relapses={relapses} today={today} paddingBottom={bottom} />
+    </View>
+  ));
+
+  return (
+    <View style={styles.root}>
+      <View style={[styles.header, { paddingTop: insets.top + s(12) }]}>
+        <IconButton label={t.achievements.back} onPress={() => router.back()}>
+          <ChevronLeftIcon color={colors.textPrimary} />
+        </IconButton>
+        <Text style={styles.title} accessibilityRole="header" maxFontSizeMultiplier={MAX_FONT_SCALE_TEXT}>
+          {t.achievements.title}
+        </Text>
+      </View>
+
+      {habits.length > 1 && (
+        <View style={styles.tabsRow}>
+          <HabitTabs
+            tabs={habits.map((h) => ({ key: h.id, label: habitName(h), color: h.color }))}
+            position={position}
+            selectedIndex={index}
+            onSelect={(i) => pager.current?.setPage(i)}
+          />
+        </View>
+      )}
+
+      {habits.length > 1 ? (
+        <PagerView
+          key={habitsKey}
+          ref={pager}
+          style={styles.pager}
+          initialPage={initialIndex}
+          onPageScroll={(e) => {
+            position.set(e.nativeEvent.position + e.nativeEvent.offset);
+          }}
+          onPageSelected={(e) => select(e.nativeEvent.position)}
+        >
+          {pages}
+        </PagerView>
+      ) : (
+        <View style={styles.pager}>{pages[0]}</View>
+      )}
+    </View>
   );
+}
 
-  if (!habit || !stats) return <Redirect href="/main" />;
+function AchievementsPage({
+  habit,
+  relapses,
+  today,
+  paddingBottom,
+}: {
+  habit: Habit;
+  relapses: Relapse[];
+  today: LocalDate;
+  paddingBottom: number;
+}) {
+  const { width } = useWindowDimensions();
+  const stats = useMemo(() => computeHabitStats(habit, relapses, today), [habit, relapses, today]);
+  const achieved = useMemo(() => achievedMilestones(habit.milestonesEarned, stats.daysSinceRelapse), [habit, stats]);
 
   const color = habit.color;
   const best = achieved[achieved.length - 1] ?? 0;
@@ -56,34 +126,8 @@ export default function AchievementsScreen() {
   // Ровная сетка: пять плиток в ряд одинаковой ширины независимо от числа цифр.
   const badgeWidth = Math.floor((width - s(spacing.screenX) * 2 - s(BADGE_GAP) * (BADGE_COLUMNS - 1)) / BADGE_COLUMNS);
 
-  const select = (i: number) => {
-    position.set(withTiming(i, { duration: 220 }));
-    setIndex(i);
-  };
-
   return (
-    <ScrollView
-      style={styles.root}
-      contentContainerStyle={[styles.content, { paddingTop: insets.top + s(12), paddingBottom: insets.bottom + s(28) }]}
-    >
-      <View style={styles.header}>
-        <IconButton label={t.achievements.back} onPress={() => router.back()}>
-          <ChevronLeftIcon color={colors.textPrimary} />
-        </IconButton>
-        <Text style={styles.title} accessibilityRole="header" maxFontSizeMultiplier={MAX_FONT_SCALE_TEXT}>
-          {t.achievements.title}
-        </Text>
-      </View>
-
-      {habits.length > 1 && (
-        <HabitTabs
-          tabs={habits.map((h) => ({ key: h.id, label: habitName(h), color: h.color }))}
-          position={position}
-          selectedIndex={index}
-          onSelect={select}
-        />
-      )}
-
+    <ScrollView contentContainerStyle={[styles.content, { paddingBottom }]} showsVerticalScrollIndicator={false}>
       <View style={[styles.summary, { backgroundColor: color }]} accessible>
         <Text style={styles.summaryCount} numberOfLines={1} adjustsFontSizeToFit maxFontSizeMultiplier={MAX_FONT_SCALE_NUMBERS}>
           {achieved.length}
@@ -209,9 +253,12 @@ function LegendItem({ label, fill, border, dashed }: { label: string; fill?: str
 
 const styles = createStyles({
   root: { flex: 1, backgroundColor: colors.background },
-  content: { paddingHorizontal: spacing.screenX, gap: 14 },
-  header: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 2 },
+  header: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: spacing.screenX, paddingBottom: 8 },
   title: { fontFamily: fonts.display700, fontSize: 22, color: colors.textPrimary },
+  tabsRow: { paddingHorizontal: spacing.screenX, paddingBottom: 6 },
+  pager: { flex: 1 },
+  page: { flex: 1 },
+  content: { paddingHorizontal: spacing.screenX, paddingTop: 6, gap: 14 },
   summary: { borderRadius: radii.counter, paddingVertical: 24, paddingHorizontal: 24, gap: 6 },
   summaryCount: { color: colors.onAccent, fontFamily: fonts.display800, fontSize: 64, lineHeight: 68, includeFontPadding: false },
   summaryTitle: { color: colors.onAccent, fontFamily: fonts.display700, fontSize: 18 },

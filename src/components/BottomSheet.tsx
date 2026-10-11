@@ -79,9 +79,14 @@ export function BottomSheet({ visible, onRequestClose, children, accessibilityLa
             accessibilityLabel={t.sheet.close}
           />
         </Animated.View>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.avoider} pointerEvents="box-none">
+        {/* Отступ сверху: даже ужатое клавиатурой окно не заезжает на статус-бар. */}
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={[styles.avoider, { paddingTop: insets.top + s(12) }]}
+          pointerEvents="box-none"
+        >
           <Animated.View
-            style={[styles.sheet, { maxHeight: height - insets.top - s(12) }, sheetStyle]}
+            style={[styles.sheet, sheetStyle]}
             accessibilityViewIsModal
             accessibilityLabel={accessibilityLabel}
           >
@@ -93,6 +98,7 @@ export function BottomSheet({ visible, onRequestClose, children, accessibilityLa
             <ScrollView
               bounces={false}
               keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="interactive"
               showsVerticalScrollIndicator={false}
               contentContainerStyle={[styles.content, { paddingBottom: Math.max(insets.bottom, s(16)) + s(12) }]}
             >
@@ -110,6 +116,9 @@ const styles = createStyles({
   scrim: { backgroundColor: colors.scrim },
   avoider: { flex: 1, justifyContent: 'flex-end' },
   sheet: {
+    // flexShrink: при появлении клавиатуры KeyboardAvoidingView уменьшает место, и окно ужимается
+    // (содержимое прокручивается), а не уезжает верхом за край экрана.
+    flexShrink: 1,
     backgroundColor: colors.background,
     borderTopLeftRadius: radii.sheet,
     borderTopRightRadius: radii.sheet,

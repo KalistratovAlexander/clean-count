@@ -1,10 +1,13 @@
 import {
+  DEFAULT_HABIT_ICON,
+  HABIT_ICONS,
   HABIT_KIND_MAX_LENGTH,
   HABIT_KINDS_MAX,
   HABIT_NAME_MAX_LENGTH,
   KINDS_BY_PRESET,
   MAX_HABITS,
   type Habit,
+  type HabitIconId,
   type HabitUnit,
 } from './types';
 
@@ -12,24 +15,13 @@ import {
 export interface CustomHabitInput {
   name: string;
   color: string;
+  icon: HabitIconId;
   unit: HabitUnit;
   /** Виды срыва одной строкой через запятую или уже списком. */
   kinds: string | string[];
 }
 
 export type CustomHabitError = 'name';
-
-/** Первый символ строки как одна графема (буква для значка своей привычки; составные символы не режутся). */
-export function firstGrapheme(text: string): string {
-  const trimmed = text.trim();
-  if (!trimmed) return '';
-  const Segmenter = (Intl as unknown as { Segmenter?: new (locale: string, options: { granularity: 'grapheme' }) => { segment(s: string): Iterable<{ segment: string }> } }).Segmenter;
-  if (Segmenter) {
-    const first = new Segmenter('ru', { granularity: 'grapheme' }).segment(trimmed)[Symbol.iterator]().next().value;
-    if (first) return first.segment;
-  }
-  return Array.from(trimmed)[0] ?? '';
-}
 
 export function parseKinds(kinds: string | string[]): string[] {
   const list = Array.isArray(kinds) ? kinds : kinds.split(/[,;\n]/);
@@ -45,10 +37,13 @@ export function parseKinds(kinds: string | string[]): string[] {
   return result.slice(0, HABIT_KINDS_MAX);
 }
 
-export function normalizeCustomHabit(input: CustomHabitInput): { name: string; color: string; unit: HabitUnit; kinds: string[] } {
+export const isHabitIcon = (x: unknown): x is HabitIconId => (HABIT_ICONS as readonly unknown[]).includes(x);
+
+export function normalizeCustomHabit(input: CustomHabitInput): { name: string; color: string; icon: HabitIconId; unit: HabitUnit; kinds: string[] } {
   return {
     name: input.name.trim().slice(0, HABIT_NAME_MAX_LENGTH),
     color: input.color,
+    icon: isHabitIcon(input.icon) ? input.icon : DEFAULT_HABIT_ICON,
     unit: input.unit,
     kinds: parseKinds(input.kinds),
   };
@@ -66,6 +61,7 @@ export function createCustomHabit(input: CustomHabitInput, id: string, order: nu
     preset: null,
     name: n.name,
     color: n.color,
+    icon: n.icon,
     unit: n.unit,
     kinds: n.kinds,
     order,
@@ -80,7 +76,7 @@ export function createCustomHabit(input: CustomHabitInput, id: string, order: nu
 /** Применяет правку своей привычки, не трогая даты, достижения и порядок. */
 export function applyCustomHabit(habit: Habit, input: CustomHabitInput): Habit {
   const n = normalizeCustomHabit(input);
-  return { ...habit, name: n.name, color: n.color, unit: n.unit, kinds: n.kinds };
+  return { ...habit, name: n.name, color: n.color, icon: n.icon, unit: n.unit, kinds: n.kinds };
 }
 
 /** Виды срыва привычки: ключи встроенных или названия своих. Пусто — срыв записывается без вида. */
@@ -103,4 +99,40 @@ export function nextHabitOrder(habits: readonly Habit[]): number {
 
 export function sortHabits(habits: readonly Habit[]): Habit[] {
   return [...habits].sort((a, b) => a.order - b.order);
+}
+
+/**
+ * Подбор значка по названию: ключевые слова по-русски и по-английски, первое совпадение.
+ * Порядок важен: «азартные игры» должны дать кости, а не геймпад.
+ */
+const ICON_KEYWORDS: readonly [HabitIconId, readonly string[]][] = [
+  ['cup', ['кофе', 'чай', 'капучино', 'латте', 'coffee', 'tea', 'latte']],
+  ['soda', ['газиров', 'кола', 'лимонад', 'soda', 'cola', 'pepsi', 'пепси']],
+  ['bolt', ['энергет', 'energy', 'редбул', 'red bull']],
+  ['candy', ['сладк', 'конфет', 'шокол', 'сахар', 'sweet', 'candy', 'sugar', 'chocolate']],
+  ['cake', ['торт', 'выпечк', 'булк', 'пирож', 'десерт', 'мучн', 'cake', 'pastr', 'bak', 'dessert']],
+  ['burger', ['фастфуд', 'фаст-фуд', 'бургер', 'пицц', 'чипс', 'fast food', 'burger', 'pizza', 'chips', 'junk']],
+  ['dice', ['ставк', 'казино', 'покер', 'азарт', 'лотере', 'bet', 'casino', 'gambl', 'poker', 'lottery']],
+  ['phone', ['телефон', 'соцсет', 'инстаграм', 'тикток', 'ютуб', 'скролл', 'phone', 'social', 'instagram', 'tiktok', 'youtube', 'scroll']],
+  ['gamepad', ['игр', 'гейм', 'консол', 'game', 'gaming', 'playstation', 'xbox']],
+  ['tv', ['сериал', 'телевиз', 'фильм', 'tv', 'series', 'netflix', 'movie']],
+  ['cart', ['покупк', 'шопинг', 'маркетплейс', 'shop', 'buy', 'wildberries', 'ozon']],
+  ['pill', ['таблет', 'лекарств', 'pill', 'drug', 'med']],
+  ['leaf', ['трав', 'марихуан', 'weed', 'cannabis', 'marijuana']],
+  ['moon', ['сон', 'спать', 'ночь', 'поздно', 'sleep', 'night', 'late']],
+  ['clock', ['прокрастин', 'откладыва', 'procrast', 'delay', 'время', 'time']],
+  ['cutlery', ['переед', 'перекус', 'еда', 'еды', 'food', 'snack', 'eat', 'обжор']],
+  ['money', ['трат', 'деньг', 'money', 'spend', 'cash', 'кредит']],
+  ['chat', ['мат', 'ругат', 'сплетн', 'swear', 'curs', 'gossip', 'ссор']],
+  ['hand', ['ногт', 'волос', 'кож', 'nail', 'hair', 'skin', 'bite']],
+];
+
+/** Значок по названию привычки; если ничего не подошло — нейтральный `ban`. */
+export function suggestHabitIcon(name: string): HabitIconId {
+  const text = name.trim().toLowerCase();
+  if (!text) return DEFAULT_HABIT_ICON;
+  for (const [icon, words] of ICON_KEYWORDS) {
+    if (words.some((w) => text.includes(w))) return icon;
+  }
+  return DEFAULT_HABIT_ICON;
 }

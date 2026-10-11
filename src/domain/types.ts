@@ -24,6 +24,34 @@ export const PRESET_COLORS: Record<PresetId, string> = {
 export type HabitUnit = 'times' | 'pieces' | 'servings' | 'minutes' | 'money';
 export const HABIT_UNITS: readonly HabitUnit[] = ['times', 'pieces', 'servings', 'minutes', 'money'];
 
+/** Значки своих привычек: нарисованы в стиле встроенных иконок и покрывают типичные привычки. */
+export type HabitIconId =
+  | 'cup'
+  | 'candy'
+  | 'cake'
+  | 'burger'
+  | 'soda'
+  | 'bolt'
+  | 'dice'
+  | 'phone'
+  | 'gamepad'
+  | 'tv'
+  | 'cart'
+  | 'pill'
+  | 'leaf'
+  | 'moon'
+  | 'clock'
+  | 'cutlery'
+  | 'money'
+  | 'chat'
+  | 'hand'
+  | 'ban';
+export const HABIT_ICONS: readonly HabitIconId[] = [
+  'cup', 'candy', 'cake', 'burger', 'soda', 'bolt', 'dice', 'phone', 'gamepad', 'tv',
+  'cart', 'pill', 'leaf', 'moon', 'clock', 'cutlery', 'money', 'chat', 'hand', 'ban',
+];
+export const DEFAULT_HABIT_ICON: HabitIconId = 'ban';
+
 /** Сколько привычек можно вести одновременно: больше не помещается в переключатель. */
 export const MAX_HABITS = 6;
 export const HABIT_NAME_MAX_LENGTH = 24;
@@ -47,6 +75,8 @@ export interface Habit {
   unit: HabitUnit;
   /** Виды срыва своей привычки (названия); у встроенных пусто — виды из `KINDS_BY_PRESET`. */
   kinds: string[];
+  /** Значок своей привычки; у встроенных не используется, у них свои иконки. */
+  icon: HabitIconId;
   /** Порядок на главном экране. */
   order: number;
   enabled: boolean;
@@ -68,6 +98,7 @@ export const emptyHabit = (id: PresetId): Habit => ({
   color: PRESET_COLORS[id],
   unit: id === 'smoking' ? 'pieces' : 'times',
   kinds: [],
+  icon: DEFAULT_HABIT_ICON,
   order: PRESET_IDS.indexOf(id),
   enabled: false,
   quitAt: null,
